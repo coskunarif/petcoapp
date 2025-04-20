@@ -68,6 +68,8 @@ backend/supabase_functions.sql
 backend/supabase_schema.sql
 backend/supabase-mcp-config.yaml
 
+mcp_config.json
+
 # Expo
 .expo/
 .expo-shared/
