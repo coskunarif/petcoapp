@@ -20,9 +20,28 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Environment files
+# Environment files and secrets
 .env
 frontend/.env
+.env.*
+frontend/.env.*
+*.env.*
+*.env
+*.local
+*.secret
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Sensitive config (add more as needed)
+secrets.json
+config.json
+firebase.json
+supabase.json
 
 # IDE files
 .vscode/
@@ -65,3 +84,9 @@ frontend/npm-debug.log*
 
 # Ignore local README changes
 !README.md
+
+# ======================
+# DO NOT COMMIT SECRETS
+# ======================
+# Never commit API keys, tokens, credentials, or secrets to source control.
+# If you accidentally commit secrets, rotate them immediately and remove from history.
