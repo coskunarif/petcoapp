@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "EXPO_PUBLIC_SUPABASE_URL": "https://fqnjpabvhnhnsfzqsnpi.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxbmpwYWJ2aG5obnNmenFzbnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUwNTI3NTYsImV4cCI6MjA2MDYyODc1Nn0.oVebgo8loYn5a81GMZJil3tfvf-UixWCFfVoVv5f8dU"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "newArchEnabled": true
+  }
+}
