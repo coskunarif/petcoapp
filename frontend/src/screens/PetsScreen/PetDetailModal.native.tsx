@@ -35,11 +35,11 @@ const PetDetailModal: React.FC = () => {
   };
 
   const handleImageUpload = async (file: any) => {
-    if (!form.user_id || !form.id) return;
+    if (!form.owner_id || !form.id) return;
     dispatch(setUploadProgress(0));
     try {
       const url = await dispatch(
-        uploadPetImageAsync({ file, userId: form.user_id, petId: form.id }) as any
+        uploadPetImageAsync({ file, userId: form.owner_id, petId: form.id }) as any
       ).unwrap();
       handlePhotosChange([...(form.photos || []), url]);
     } catch (err: any) {

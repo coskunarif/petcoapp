@@ -121,11 +121,13 @@ const petsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchPetsAsync.fulfilled, (state, action) => {
+      console.log('[petsSlice] fetchPetsAsync.fulfilled. Setting petsList to:', action.payload);
         console.log('[petsSlice] fetchPetsAsync.fulfilled. Payload:', action.payload);
         state.petsList = action.payload;
         state.loading = false;
       })
       .addCase(fetchPetsAsync.rejected, (state, action) => {
+      console.log('[petsSlice] fetchPetsAsync.rejected. Error:', action.payload);
         console.log('[petsSlice] fetchPetsAsync.rejected. Error:', action.payload);
         state.loading = false;
         state.error = action.payload as string;

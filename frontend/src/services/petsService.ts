@@ -2,11 +2,13 @@ import supabase from '../supabaseClient';
 import { Pet } from '../store/petsSlice';
 
 export async function fetchPets(userId: string): Promise<Pet[]> {
+  console.log('[petsService.fetchPets] called with userId:', userId);
   const { data, error } = await supabase
     .from('pets')
     .select('*')
     .eq('owner_id', userId)
     .order('created_at', { ascending: false });
+  console.log('[petsService.fetchPets] Supabase response:', { data, error });
   if (error) throw error;
   return data as Pet[];
 }

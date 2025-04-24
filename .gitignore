@@ -87,6 +87,8 @@ frontend/npm-debug.log*
 # Ignore local README changes
 !README.md
 
+./mcp_config.json
+
 # ======================
 # DO NOT COMMIT SECRETS
 # ======================

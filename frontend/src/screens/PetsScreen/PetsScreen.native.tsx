@@ -9,11 +9,17 @@ import AddPetFAB from './AddPetFAB.native';
 import PetDetailModal from './PetDetailModal.native';
 
 const PetsScreen: React.FC = () => {
+  // Debug: log full Redux state
+  const fullState = useSelector((state: RootState) => state);
+  console.log('[PetsScreen] Full Redux state:', fullState);
   const dispatch = useDispatch();
   const { petsList, loading, error, editingPet } = useSelector((state: RootState) => state.pets);
+  console.log('[PetsScreen] useSelector petsList:', petsList, 'loading:', loading, 'error:', error, 'editingPet:', editingPet);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
+  console.log('[PetsScreen] useSelector userId:', userId);
 
   useEffect(() => {
+    console.log('[PetsScreen] useEffect fired. userId:', userId);
     if (userId) {
       console.log('[PetsScreen] useEffect: dispatching fetchPetsAsync');
       dispatch(fetchPetsAsync(userId) as any);
@@ -24,7 +30,7 @@ const PetsScreen: React.FC = () => {
     console.log('[PetsScreen] handleAddPet triggered');
     dispatch(setEditingPet({
       id: '',
-      user_id: userId || '',
+      owner_id: userId || '',
       name: '',
       species: '',
       breed: '',
@@ -37,6 +43,8 @@ const PetsScreen: React.FC = () => {
   };
 
   console.log('[PetsScreen] Render: petsList', petsList, 'loading', loading, 'error', error);
+  // Debug: log petsList type and length
+  console.log('[PetsScreen] petsList type:', typeof petsList, 'isArray:', Array.isArray(petsList), 'length:', petsList ? petsList.length : 'N/A');
   return (
     <View style={styles.container}>
       {loading && <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 32 }} />}
