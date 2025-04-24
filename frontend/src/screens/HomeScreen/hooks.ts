@@ -9,40 +9,50 @@ export const fetchDashboardData = async (
   longitude: number,
   radiusKm: number = 10
 ): Promise<HomeDashboardData & { error?: string }> => {
-  console.log('[fetchDashboardData] userId:', userId, 'lat:', latitude, 'lng:', longitude);
+  console.log('[fetchDashboardData] userId:', userId, 'typeof userId:', typeof userId, 'lat:', latitude, 'lng:', longitude);
   try {
-  // Get user credits
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('credit_balance')
-    .eq('id', userId)
-    .single();
-  console.log('[fetchDashboardData] userData:', userData, 'userError:', userError);
+    // Log query details
+    console.log('[fetchDashboardData] Querying public.users for credit_balance with id =', userId);
+    // Get user credits
+    const { data: userData, error: userError, status: userStatus, statusText: userStatusText } = await supabase
+      .from('users')
+      .select('credit_balance')
+      .eq('id', userId)
+      .single();
+    console.log('[fetchDashboardData] Supabase response:', { userData, userError, userStatus, userStatusText });
+    if (userError) console.error('[fetchDashboardData] userError details:', userError);
+    if (!userData) console.warn('[fetchDashboardData] No userData found for id:', userId);
+
   if (userError) throw userError;
 
   // Get upcoming services as provider
-  const { data: providerServices, error: providerError } = await supabase
-    .from('service_requests')
-    .select(`id, start_time, end_time, status, users!requester_id(full_name, profile_image_url), pets(name, image_url), service_types(name, icon)`)
-    .eq('provider_id', userId)
-    .in('status', ['accepted', 'pending'])
-    .gte('start_time', new Date().toISOString())
-    .order('start_time', { ascending: true })
-    .limit(5);
-  console.log('[fetchDashboardData] providerServices:', providerServices, 'providerError:', providerError);
-  if (providerError) throw providerError;
+    console.log('[fetchDashboardData] Querying service_requests as provider for userId =', userId);
+    const { data: providerServices, error: providerError, status: providerStatus, statusText: providerStatusText } = await supabase
+      .from('service_requests')
+      .select(`id, start_time, end_time, status, users!requester_id(full_name, profile_image_url), pets(name, image_url), service_types(name, icon)`)
+      .eq('provider_id', userId)
+      .in('status', ['accepted', 'pending'])
+      .gte('start_time', new Date().toISOString())
+      .order('start_time', { ascending: true })
+      .limit(5);
+    console.log('[fetchDashboardData] providerServices response:', { providerServices, providerError, providerStatus, providerStatusText });
+    if (providerError) console.error('[fetchDashboardData] providerError details:', providerError);
+
 
   // Get upcoming services as requester
-  const { data: requesterServices, error: requesterError } = await supabase
-    .from('service_requests')
-    .select(`id, start_time, end_time, status, users!provider_id(full_name, profile_image_url), pets(name, image_url), service_types(name, icon)`)
-    .eq('requester_id', userId)
-    .in('status', ['accepted', 'pending'])
-    .gte('start_time', new Date().toISOString())
-    .order('start_time', { ascending: true })
-    .limit(5);
-  console.log('[fetchDashboardData] requesterServices:', requesterServices, 'requesterError:', requesterError);
-  if (requesterError) throw requesterError;
+    console.log('[fetchDashboardData] Querying service_requests as requester for userId =', userId);
+    const { data: requesterServices, error: requesterError, status: requesterStatus, statusText: requesterStatusText } = await supabase
+      .from('service_requests')
+      .select(`id, start_time, end_time, status, users!provider_id(full_name, profile_image_url), pets(name, image_url), service_types(name, icon)`)
+      .eq('requester_id', userId)
+      .in('status', ['accepted', 'pending'])
+      .gte('start_time', new Date().toISOString())
+      .order('start_time', { ascending: true })
+      .limit(5);
+    console.log('[fetchDashboardData] requesterServices response:', { requesterServices, requesterError, requesterStatus, requesterStatusText });
+    if (requesterError) console.error('[fetchDashboardData] requesterError details:', requesterError);
+    console.log('[fetchDashboardData] requesterServices:', requesterServices, 'requesterError:', requesterError);
+    if (requesterError) throw requesterError;
 
   // Get nearby providers
   const { data: nearbyProviders, error: providersError } = await supabase.rpc('find_nearby_providers', {
@@ -62,8 +72,26 @@ export const fetchDashboardData = async (
     service_types: service.service_types ? (Array.isArray(service.service_types) ? service.service_types[0] : service.service_types) : undefined,
   });
 
+  // Enhanced logging for returned values
+  let userCreditsFinal = undefined;
+  if (userData && typeof userData.credit_balance !== 'undefined') {
+    userCreditsFinal = userData.credit_balance;
+    console.log('[fetchDashboardData] Returning userCredits from Supabase:', userCreditsFinal);
+  } else {
+    // Log when fallback/default is used
+    userCreditsFinal = 10; // or whatever your fallback logic is
+    console.warn('[fetchDashboardData] userData.credit_balance is undefined! Using fallback value:', userCreditsFinal);
+  }
+  console.log('[fetchDashboardData] Final return object:', {
+    userCredits: userCreditsFinal,
+    upcomingServices: {
+      asProvider: (providerServices || []).map(normalizeService),
+      asRequester: (requesterServices || []).map(normalizeService),
+    },
+    nearbyProviders: nearbyProviders || [],
+  });
   return {
-    userCredits: userData.credit_balance,
+    userCredits: userCreditsFinal,
     upcomingServices: {
       asProvider: (providerServices || []).map(normalizeService),
       asRequester: (requesterServices || []).map(normalizeService),

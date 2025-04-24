@@ -8,20 +8,23 @@ import EmptyStatePets from './EmptyStatePets.native';
 import AddPetFAB from './AddPetFAB.native';
 import PetDetailModal from './PetDetailModal.native';
 
-const mockUserId = 'demo-user-123'; // Replace with real auth user ID
-
 const PetsScreen: React.FC = () => {
   const dispatch = useDispatch();
   const { petsList, loading, error, editingPet } = useSelector((state: RootState) => state.pets);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   useEffect(() => {
-    dispatch(fetchPetsAsync(mockUserId) as any);
-  }, [dispatch]);
+    if (userId) {
+      console.log('[PetsScreen] useEffect: dispatching fetchPetsAsync');
+      dispatch(fetchPetsAsync(userId) as any);
+    }
+  }, [dispatch, userId]);
 
   const handleAddPet = () => {
+    console.log('[PetsScreen] handleAddPet triggered');
     dispatch(setEditingPet({
       id: '',
-      user_id: mockUserId,
+      user_id: userId || '',
       name: '',
       species: '',
       breed: '',
@@ -33,6 +36,7 @@ const PetsScreen: React.FC = () => {
     }));
   };
 
+  console.log('[PetsScreen] Render: petsList', petsList, 'loading', loading, 'error', error);
   return (
     <View style={styles.container}>
       {loading && <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 32 }} />}

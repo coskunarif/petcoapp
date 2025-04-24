@@ -5,13 +5,13 @@ export async function fetchPets(userId: string): Promise<Pet[]> {
   const { data, error } = await supabase
     .from('pets')
     .select('*')
-    .eq('user_id', userId)
+    .eq('owner_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data as Pet[];
 }
 
-export async function addPet(pet: Partial<Pet> & { user_id: string }): Promise<Pet> {
+export async function addPet(pet: Partial<Pet> & { owner_id: string }): Promise<Pet> {
   const { data, error } = await supabase
     .from('pets')
     .insert([pet])

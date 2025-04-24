@@ -3,7 +3,7 @@ import * as petsService from '../services/petsService';
 
 export interface Pet {
   id: string;
-  user_id: string;
+  owner_id: string;
   name: string;
   species: string;
   breed?: string;
@@ -40,16 +40,20 @@ const initialState: PetsState = {
 // Async thunks
 export const fetchPetsAsync = createAsyncThunk<Pet[], string>(
   'pets/fetchPets',
-  async (userId, { rejectWithValue }) => {
+  async (userId: string, { rejectWithValue }) => {
+    console.log('[fetchPetsAsync] called with userId:', userId);
     try {
-      return await petsService.fetchPets(userId);
+      const pets = await petsService.fetchPets(userId);
+      console.log('[fetchPetsAsync] pets fetched:', pets);
+      return pets;
     } catch (err: any) {
+      console.log('[fetchPetsAsync] error:', err);
       return rejectWithValue(err.message || 'Failed to fetch pets');
     }
   }
 );
 
-export const addPetAsync = createAsyncThunk<Pet, Partial<Pet> & { user_id: string }>(
+export const addPetAsync = createAsyncThunk<Pet, Partial<Pet> & { owner_id: string }>(
   'pets/addPet',
   async (pet, { rejectWithValue }) => {
     try {
@@ -112,23 +116,28 @@ const petsSlice = createSlice({
     builder
       // Fetch pets
       .addCase(fetchPetsAsync.pending, (state) => {
+        console.log('[petsSlice] fetchPetsAsync.pending');
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchPetsAsync.fulfilled, (state, action) => {
+        console.log('[petsSlice] fetchPetsAsync.fulfilled. Payload:', action.payload);
         state.petsList = action.payload;
         state.loading = false;
       })
       .addCase(fetchPetsAsync.rejected, (state, action) => {
+        console.log('[petsSlice] fetchPetsAsync.rejected. Error:', action.payload);
         state.loading = false;
         state.error = action.payload as string;
       })
       // Add pet
       .addCase(addPetAsync.pending, (state) => {
+        console.log('[petsSlice] addPetAsync.pending');
         state.loading = true;
         state.error = null;
       })
       .addCase(addPetAsync.fulfilled, (state, action) => {
+        console.log('[petsSlice] addPetAsync.fulfilled. Payload:', action.payload);
         state.petsList.unshift(action.payload);
         state.loading = false;
       })
