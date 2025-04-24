@@ -4,6 +4,7 @@ const initialState = {
   services: [],
   loading: false,
   error: null,
+  requestsTabAsProvider: true, // default to 'As Provider'
 };
 
 const serviceSlice = createSlice({
@@ -19,8 +20,11 @@ const serviceSlice = createSlice({
     removeService(state, action) {
       state.services = state.services.filter(s => s.id !== action.payload);
     },
+    setRequestsTabAsProvider(state, action) {
+      state.requestsTabAsProvider = action.payload;
+    },
   },
 });
 
-export const { setServices, addService, removeService } = serviceSlice.actions;
+export const { setServices, addService, removeService, setRequestsTabAsProvider } = serviceSlice.actions;
 export default serviceSlice.reducer;

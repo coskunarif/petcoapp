@@ -1,13 +1,28 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button } from 'react-native-paper';
+import { useDispatch, useSelector } from 'react-redux';
+import { setRequestsTabAsProvider } from '../../../redux/slices/serviceSlice';
 
 export default function RequestsFilterToggle() {
-  // Placeholder for toggle logic
+  const dispatch = useDispatch();
+  const asProvider = useSelector((state: any) => state.services?.requestsTabAsProvider) ?? true;
   return (
     <View style={styles.container}>
-      <Button mode="outlined" style={styles.button}>As Provider</Button>
-      <Button mode="outlined" style={styles.button}>As Requester</Button>
+      <Button
+        mode={asProvider ? 'contained' : 'outlined'}
+        style={styles.button}
+        onPress={() => dispatch(setRequestsTabAsProvider(true))}
+      >
+        As Provider
+      </Button>
+      <Button
+        mode={!asProvider ? 'contained' : 'outlined'}
+        style={styles.button}
+        onPress={() => dispatch(setRequestsTabAsProvider(false))}
+      >
+        As Requester
+      </Button>
     </View>
   );
 }
