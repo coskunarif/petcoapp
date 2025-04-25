@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
@@ -17,26 +17,40 @@ interface Props {
 const NewConversationModal: React.FC<Props> = ({ users, isOpen, onClose, onStartConversation }) => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
+  useEffect(() => {
+    console.log("[DEBUG] Users prop in modal:", users);
+  }, [users]);
+
   return (
     <Modal
       visible={isOpen}
-      transparent
+      transparent={false} // Changed for Android Picker visibility
       animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
           <Text style={styles.title}>Start New Conversation</Text>
-          <Picker
-            selectedValue={selectedUserId}
-            onValueChange={(itemValue) => setSelectedUserId(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a user..." value="" />
-            {users.map((user) => (
-              <Picker.Item key={user.id} label={user.name} value={user.id} />
-            ))}
-          </Picker>
+          <View style={{ maxHeight: 200, marginBottom: 16 }}>
+            {users && users.length > 0 ? (
+              users.map((user) => (
+                <TouchableOpacity
+                  key={user.id}
+                  style={{
+                    padding: 12,
+                    backgroundColor: selectedUserId === user.id ? "#cce6ff" : "#eee",
+                    marginBottom: 4,
+                    borderRadius: 6,
+                  }}
+                  onPress={() => setSelectedUserId(user.id)}
+                >
+                  <Text style={{ fontSize: 16 }}>{user.name}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text>No users available</Text>
+            )}
+          </View>
           <View style={styles.buttonRow}>
             <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
               <Text style={styles.cancelText}>Cancel</Text>
@@ -79,8 +93,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   picker: {
+    height: 200, // Increased for visibility
     width: '100%',
-    marginBottom: 20,
+    backgroundColor: '#eee', // For debug visibility
+    marginBottom: 16,
   },
   buttonRow: {
     flexDirection: 'row',
