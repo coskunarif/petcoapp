@@ -2,8 +2,8 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import PetListScreen from '../screens/pets/PetListScreen';
-import ServiceListScreen from '../screens/services/ServiceListScreen';
-import ChatListScreen from '../screens/messages/ChatListScreen';
+import ServicesScreen from '../screens/services';
+import MessagesScreen from '../screens/messages/MessagesScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -24,12 +24,12 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Services" 
-        component={ServiceListScreen}
+        component={ServicesScreen}
         options={{ tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="handshake" color={color} size={size} />) }}
       />
       <Tab.Screen 
         name="Messages" 
-        component={ChatListScreen}
+        component={MessagesScreen}
         options={{ tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="chat" color={color} size={size} />) }}
       />
       <Tab.Screen 

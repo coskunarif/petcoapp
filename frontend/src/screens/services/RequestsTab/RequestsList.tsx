@@ -8,7 +8,11 @@ import { useSelector } from 'react-redux';
 export default function RequestsList() {
   const userId = useSelector((state: any) => state.auth?.user?.id);
   const asProvider = useSelector((state: any) => state.services?.requestsTabAsProvider) ?? true;
-  const { data, isLoading, error } = useQuery(['requests', userId, asProvider], () => fetchRequests({ asProvider, userId }).then(res => res.data), { enabled: !!userId });
+  const { data, isLoading, error } = useQuery({
+  queryKey: ['requests', userId, asProvider],
+  queryFn: () => fetchRequests({ asProvider, userId }).then(res => res.data),
+  enabled: !!userId,
+});
 
   if (isLoading) {
     return <ActivityIndicator style={{ marginTop: 32 }} />;

@@ -8,7 +8,11 @@ import { useSelector } from 'react-redux';
 export default function ActiveListingsSection() {
   // Assume userId is available from Redux auth slice
   const userId = useSelector((state: any) => state.auth?.user?.id);
-  const { data, isLoading, error } = useQuery(['myListings', userId], () => fetchServices({ provider_id: userId }).then(res => res.data), { enabled: !!userId });
+  const { data, isLoading, error } = useQuery({
+  queryKey: ['myListings', userId],
+  queryFn: () => fetchServices({ provider_id: userId }).then(res => res.data),
+  enabled: !!userId,
+});
 
   if (isLoading) {
     return <ActivityIndicator style={{ marginTop: 32 }} />;
