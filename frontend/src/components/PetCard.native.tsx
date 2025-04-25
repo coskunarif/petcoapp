@@ -8,28 +8,46 @@ interface PetCardProps {
   onDelete?: (pet: Pet) => void;
 }
 
+import { Pressable } from 'react-native';
 const PetCard: React.FC<PetCardProps> = ({ pet, onEdit, onDelete }) => {
+  const [pressed, setPressed] = React.useState(false);
   return (
-    <View style={styles.card}>
-      <Image
-        source={{ uri: pet.photos && pet.photos[0] ? pet.photos[0] : 'https://placekitten.com/80/80' }}
-        style={styles.image}
-        accessibilityLabel={pet.name}
-      />
-      <View style={{ flex: 1 }}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => onEdit && onEdit(pet)}
+      accessibilityLabel={`View details for ${pet.name}`}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+    >
+      <View style={styles.imageWrapper}>
+        <Image
+          source={{ uri: pet.photos && pet.photos[0] ? pet.photos[0] : 'https://placekitten.com/120/120' }}
+          style={styles.image}
+          accessibilityLabel={pet.name}
+        />
+      </View>
+      <View style={{ flex: 1, marginRight: 12 }}>
         <Text style={styles.name}>{pet.name || 'Unnamed Pet'}</Text>
         <Text style={styles.breed}>{pet.breed || 'Breed unknown'}</Text>
         <Text style={styles.species}>{pet.species || 'Species'}{pet.age !== undefined && pet.age !== null ? ` • ${pet.age} yrs` : ''}</Text>
       </View>
       <View style={styles.actions}>
-        <TouchableOpacity accessibilityLabel={`Edit ${pet.name}`} onPress={() => onEdit && onEdit(pet)}>
+        <TouchableOpacity
+          accessibilityLabel={`Edit ${pet.name}`}
+          style={styles.iconBtn}
+          onPress={e => { e.stopPropagation && e.stopPropagation(); onEdit && onEdit(pet); }}
+        >
           <Text style={styles.edit}>✏️</Text>
         </TouchableOpacity>
-        <TouchableOpacity accessibilityLabel={`Delete ${pet.name}`} onPress={() => onDelete && onDelete(pet)}>
+        <TouchableOpacity
+          accessibilityLabel={`Delete ${pet.name}`}
+          style={styles.iconBtn}
+          onPress={e => { e.stopPropagation && e.stopPropagation(); onDelete && onDelete(pet); }}
+        >
           <Text style={styles.delete}>🗑️</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -37,49 +55,78 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 20,
+    borderRadius: 22,
+    marginBottom: 22,
+    backgroundColor: 'rgba(255,255,255,0.80)', // glassy
+    shadowColor: '#4a90e2',
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 0,
+    overflow: 'hidden',
+    // For glassmorphism, add border if desired
+    borderColor: 'rgba(74,144,226,0.18)',
+  },
+  cardPressed: {
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.2,
+  },
+  imageWrapper: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#e0e7ff',
+    marginRight: 20,
+    width: 64,
+    height: 64,
+    backgroundColor: '#f1f5fa',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   image: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 15,
     backgroundColor: '#eee',
   },
   name: {
-    fontWeight: '600',
-    fontSize: 18,
-    color: '#222',
+    fontWeight: '700',
+    fontSize: 20,
+    color: '#232a35',
+    marginBottom: 2,
+    letterSpacing: 0.1,
   },
   breed: {
-    color: '#666',
+    fontWeight: '500',
+    fontSize: 15,
+    color: '#6a7ba2',
+    marginBottom: 1,
   },
   species: {
-    color: '#999',
-    fontSize: 12,
+    fontWeight: '400',
+    fontSize: 14,
+    color: '#a2adc0',
   },
   actions: {
     flexDirection: 'row',
-    gap: 8,
-    marginLeft: 12,
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  iconBtn: {
+    marginHorizontal: 4,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(74,144,226,0.10)',
   },
   edit: {
+    fontSize: 22,
     color: '#1976d2',
-    fontSize: 18,
-    marginRight: 8,
   },
   delete: {
-    color: '#d32f2f',
-    fontSize: 18,
+    fontSize: 22,
+    color: '#e53935',
+    marginLeft: 2,
   },
 });
 
