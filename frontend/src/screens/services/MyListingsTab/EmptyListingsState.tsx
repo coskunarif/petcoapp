@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Button } from 'react-native-paper';
+import Button from '../../../components/Button';
 
 export default function EmptyListingsState() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>You have no active service listings.</Text>
-      <Button mode="contained">Create a Listing</Button>
+      <Button title="Create a Listing" onPress={() => {}} />
     </View>
   );
 }
