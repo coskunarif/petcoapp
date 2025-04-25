@@ -20,35 +20,45 @@ const ProviderCard: React.FC<Props> = ({ provider, onPress }) => (
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    margin: 8,
-    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)', // glassy
+    borderRadius: 20,
+    margin: 12,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
+    elevation: 8,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 16,
+    backgroundColor: '#E6E6FA',
   },
   info: {
     flex: 1,
   },
   name: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '900',
+    fontSize: 18,
     marginBottom: 2,
+    color: '#23235B',
   },
   distance: {
-    fontSize: 13,
-    color: '#888',
+    fontSize: 14,
+    color: '#6C63FF',
+    fontWeight: '600',
+    marginBottom: 2,
   },
   rating: {
-    fontSize: 13,
-    color: '#FFA726',
+    fontSize: 15,
+    color: '#FFD700', // modern gold accent
+    fontWeight: 'bold',
+    marginBottom: 2,
   },
   services: {
     fontSize: 12,

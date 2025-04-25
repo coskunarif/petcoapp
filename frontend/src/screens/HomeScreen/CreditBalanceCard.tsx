@@ -15,23 +15,35 @@ const CreditBalanceCard: React.FC<Props> = ({ balance, onPress }) => (
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#4F8EF7',
-    borderRadius: 14,
-    padding: 20,
-    margin: 16,
+    backgroundColor: 'rgba(108,99,255,0.85)', // glassy accent
+    borderRadius: 22,
+    padding: 28,
+    margin: 20,
     alignItems: 'center',
-    elevation: 3,
+    elevation: 8,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
   },
   label: {
     color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
-    fontWeight: '600',
+    fontSize: 18,
+    marginBottom: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(108,99,255,0.12)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   balance: {
     color: '#fff',
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(108,99,255,0.18)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
 });
 

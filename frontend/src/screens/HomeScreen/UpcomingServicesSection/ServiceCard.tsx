@@ -30,38 +30,49 @@ function getStatusColor(status: string) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    margin: 8,
-    padding: 12,
-    elevation: 2,
-    width: 220,
+    backgroundColor: 'rgba(255,255,255,0.92)', // glassy
+    borderRadius: 20,
+    margin: 12,
+    padding: 18,
+    elevation: 8,
+    width: 240,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 16,
+    backgroundColor: '#E6E6FA',
   },
   info: {
     flex: 1,
   },
   name: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '900',
+    fontSize: 18,
     marginBottom: 2,
+    color: '#23235B',
   },
   time: {
-    fontSize: 13,
-    color: '#888',
+    fontSize: 16,
+    color: '#6C63FF',
+    fontWeight: '600',
+    marginBottom: 4,
   },
   status: {
-    marginTop: 4,
-    fontWeight: '600',
+    fontSize: 14,
+    marginTop: 6,
+    fontWeight: 'bold',
+    letterSpacing: 0.2,
+    textTransform: 'capitalize',
   },
 });
 
