@@ -27,7 +27,22 @@ export default function RequestsFilterToggle() {
   );
 }
 
+import { Dimensions } from 'react-native';
+const isMobile = Dimensions.get('window').width < 600;
+
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', justifyContent: 'center', padding: 8 },
-  button: { marginHorizontal: 4 },
+  button: {
+    marginHorizontal: 4,
+    borderRadius: isMobile ? 24 : 6,
+    backgroundColor: isMobile ? 'rgba(255,255,255,0.82)' : undefined,
+    borderWidth: isMobile ? 1.5 : 1,
+    borderColor: isMobile ? '#b5b3fa' : '#ccc',
+    shadowColor: isMobile ? '#6C63FF' : undefined,
+    shadowOpacity: isMobile ? 0.09 : 0,
+    shadowRadius: isMobile ? 8 : 0,
+    elevation: isMobile ? 3 : 1,
+    paddingHorizontal: isMobile ? 18 : 8,
+    minWidth: isMobile ? 110 : 0,
+  },
 });

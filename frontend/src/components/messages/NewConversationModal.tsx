@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
 interface User {
@@ -16,20 +16,43 @@ interface Props {
 
 const NewConversationModal: React.FC<Props> = ({ users, isOpen, onClose, onStartConversation }) => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [modalVisible, setModalVisible] = useState(isOpen);
+  const animated = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    console.log("[DEBUG] Users prop in modal:", users);
-  }, [users]);
+    if (isOpen) {
+      setModalVisible(true);
+      Animated.timing(animated, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(animated, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setModalVisible(false));
+    }
+  }, [isOpen]);
+
+  const animatedStyle = {
+    opacity: animated,
+    transform: [{ translateY: animated.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+  };
+
+  if (!modalVisible) return null;
 
   return (
     <Modal
       visible={isOpen}
-      transparent={false} // Changed for Android Picker visibility
-      animationType="fade"
+      transparent={true}
+      animationType="none"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContent}>
+        <Animated.View style={[styles.modalContent, animatedStyle]}>
+
           <Text style={styles.title}>Start New Conversation</Text>
           <View style={{ maxHeight: 200, marginBottom: 16 }}>
             {users && users.length > 0 ? (
@@ -63,7 +86,7 @@ const NewConversationModal: React.FC<Props> = ({ users, isOpen, onClose, onStart
               <Text style={styles.startText}>Start</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -78,18 +101,18 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 28,
-    padding: 32,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     minWidth: 320,
     maxWidth: 420,
-    shadowColor: '#4a90e2',
-    shadowOpacity: 0.18,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 24,
-    borderWidth: 1.2,
-    borderColor: 'rgba(173, 216, 255, 0.14)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 0,
     alignSelf: 'center',
   },
   title: {

@@ -33,12 +33,14 @@ export default function ServiceCard({ service }: { service: any }) {
           style={[
             styles.card,
             {
-              transform: [{ scale }],
               elevation: elevation,
               shadowRadius: elevation.interpolate({ inputRange: [7, 14], outputRange: [14, 24] }),
             }
           ]}
         >
+          <Animated.View
+            style={{ transform: [{ scale }] }}
+          >
           <View style={styles.accentBorder}>
             <View style={styles.gradientBg}>
               <Card.Content>
@@ -48,6 +50,7 @@ export default function ServiceCard({ service }: { service: any }) {
               </Card.Content>
             </View>
           </View>
+          </Animated.View>
         </Animated.View>
       </Pressable>
       <ServiceDetailModal visible={modalVisible} onDismiss={() => setModalVisible(false)} service={service} />

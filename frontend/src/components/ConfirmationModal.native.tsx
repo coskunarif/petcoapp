@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Pressable } from 'react-native';
+import { ButtonStyles2025 } from './ButtonStyles2025.native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface ConfirmationModalProps {
@@ -42,33 +43,33 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onCancel}
     >
       <View style={styles.overlay}>
-        <Animated.View style={[styles.modal, { transform: [{ scale: scaleAnim }] }]}>  
+        <Animated.View style={[styles.animatedModal, { opacity: scaleAnim, transform: [{ translateY: scaleAnim.interpolate({ inputRange: [0.92, 1], outputRange: [40, 0] }) }] }]}>  
           <MaterialCommunityIcons name={iconName as any} size={48} color={iconColor} style={styles.icon} />
           <Text style={styles.message}>{message}</Text>
           <View style={styles.buttonRow}>
             <Pressable
               onPress={onCancel}
               style={({ pressed }) => [
-                styles.cancelButton,
-                pressed && { backgroundColor: '#eaf1fa', transform: [{ scale: 0.97 }], opacity: 0.85 },
+                ButtonStyles2025.secondary,
+                pressed && { opacity: 0.75, transform: [{ scale: 0.97 }] },
               ]}
               accessibilityLabel="Cancel"
             >
-              <Text style={styles.cancelText}>{cancelText}</Text>
+              <Text style={ButtonStyles2025.secondaryText}>{cancelText}</Text>
             </Pressable>
             <Pressable
               onPress={onConfirm}
               style={({ pressed }) => [
-                styles.confirmButton,
-                pressed && { backgroundColor: '#1565c0', transform: [{ scale: 0.97 }], opacity: 0.85 },
+                ButtonStyles2025.primary,
+                pressed && { opacity: 0.82, transform: [{ scale: 0.97 }] },
               ]}
               accessibilityLabel="Confirm"
             >
-              <Text style={styles.confirmText}>{confirmText}</Text>
+              <Text style={ButtonStyles2025.primaryText}>{confirmText}</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -83,6 +84,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(24,38,63,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  animatedModal: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    minWidth: 280,
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 0,
   },
   modal: {
     backgroundColor: 'rgba(255,255,255,0.88)',

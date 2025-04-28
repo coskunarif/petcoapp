@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Animated } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import {
@@ -83,9 +83,14 @@ const PetDetailModal: React.FC = () => {
   };
 
   return (
-    <Modal visible transparent animationType="fade">
+    <Modal
+      visible={!!form}
+      transparent
+      animationType="none"
+      onRequestClose={handleCancel}
+    >
       <View style={styles2025.overlay}>
-        <View style={styles2025.glassModal}>
+        <Animated.View style={[styles2025.glassModal, { opacity: !!form ? 1 : 0, transform: [{ translateY: !!form ? 0 : 40 }] }]}>
           <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
             <Text style={styles2025.title}>{form.id ? 'Edit Pet' : 'Add Pet'}</Text>
             <BasicInfoSection form={form} onChange={handleChange} />
@@ -101,7 +106,7 @@ const PetDetailModal: React.FC = () => {
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -117,17 +122,17 @@ const styles2025 = StyleSheet.create({
   },
   glassModal: {
     width: '94%',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 28,
-    padding: 28,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     maxHeight: '92%',
-    shadowColor: '#4a90e2',
-    shadowOpacity: 0.18,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 24,
-    borderWidth: 1.2,
-    borderColor: 'rgba(173, 216, 255, 0.14)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 0,
     // Glassmorphism blur (optional, fallback to soft background)
   },
   title: {

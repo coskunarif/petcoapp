@@ -10,7 +10,14 @@ function SettingItem({ label, value, onValueChange, type = 'switch', onPress }) 
     return (
       <View style={styles.settingItem}>
         <Text style={styles.settingLabel}>{label}</Text>
-        <Switch value={value} onValueChange={onValueChange} />
+        <Switch
+          value={value}
+          onValueChange={onValueChange}
+          thumbColor={value ? '#6C63FF' : '#fff'}
+          trackColor={{ false: '#e0e7ef', true: '#b5b3fa' }}
+          ios_backgroundColor="#e0e7ef"
+          style={styles.settingSwitch}
+        />
       </View>
     );
   }
@@ -59,6 +66,9 @@ export default function SettingsSections({ settings, onChange }) {
   );
 }
 
+import { Platform, Dimensions } from 'react-native';
+const isMobile = Dimensions.get('window').width < 600;
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
@@ -82,9 +92,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: isMobile ? 16 : 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    borderRadius: isMobile ? 24 : 12,
+    marginVertical: isMobile ? 6 : 0,
+    backgroundColor: isMobile ? 'rgba(255,255,255,0.82)' : '#fff',
+    shadowColor: isMobile ? '#6C63FF' : undefined,
+    shadowOpacity: isMobile ? 0.08 : 0,
+    shadowRadius: isMobile ? 8 : 0,
+    elevation: isMobile ? 3 : 1,
   },
   settingLabel: {
     fontSize: 15,
@@ -93,5 +110,14 @@ const styles = StyleSheet.create({
   settingArrow: {
     fontSize: 18,
     color: '#bbb',
+  },
+  settingSwitch: {
+    ...(isMobile && {
+      transform: [{ scaleX: 1.12 }, { scaleY: 1.12 }],
+      shadowColor: '#6C63FF',
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
+    }),
   },
 });

@@ -1,12 +1,33 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Modal, Portal, Card, Title, Paragraph, Button } from 'react-native-paper';
+import { Animated } from 'react-native';
 import { View, StyleSheet } from 'react-native';
 
 export default function ServiceDetailModal({ visible, onDismiss, service }: { visible: boolean; onDismiss: () => void; service: any }) {
+  const animated = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(animated, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(animated, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+  const animatedStyle = {
+    opacity: animated,
+    transform: [{ translateY: animated.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+  };
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modal}>
-        <Card>
+        <Animated.View style={[styles.animatedCard, animatedStyle]}>
           <Card.Content>
             <Title>{service?.type} by {service?.provider}</Title>
             <Paragraph>{service?.description}</Paragraph>
@@ -16,7 +37,7 @@ export default function ServiceDetailModal({ visible, onDismiss, service }: { vi
             <Button onPress={onDismiss}>Close</Button>
             <Button mode="contained">Request Service</Button>
           </Card.Actions>
-        </Card>
+        </Animated.View>
       </Modal>
     </Portal>
   );
@@ -29,7 +50,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flex: 1,
-    backgroundColor: 'rgba(24,38,63,0.22)', // subtle overlay
+    backgroundColor: 'rgba(24,38,63,0.22)',
+  },
+  animatedCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    maxWidth: 420,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 0,
   },
   card: {
     backgroundColor: 'rgba(255,255,255,0.82)',
