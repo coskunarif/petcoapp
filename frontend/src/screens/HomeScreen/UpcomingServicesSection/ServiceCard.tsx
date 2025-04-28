@@ -30,16 +30,18 @@ function getStatusColor(status: string) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.92)', // glassy
-    borderRadius: 20,
-    margin: 12,
-    padding: 18,
-    elevation: 8,
-    width: 240,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 26,
+    marginVertical: 14,
+    marginHorizontal: 12,
+    paddingVertical: 22,
+    paddingHorizontal: 22,
+    elevation: 10,
+    width: 250,
+    shadowColor: '#1A244066',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13,
+    shadowRadius: 18,
   },
   row: {
     flexDirection: 'row',

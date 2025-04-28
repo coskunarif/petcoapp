@@ -1,11 +1,18 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet } from 'react-native';
 
 export default function LogoutButton({ onLogout }) {
   return (
-    <TouchableOpacity style={styles.button} onPress={onLogout} accessibilityLabel="Sign out">
+    <Pressable
+      style={({ pressed }) => [
+        styles.button,
+        pressed && { backgroundColor: '#c62828', transform: [{ scale: 0.97 }], opacity: 0.85 },
+      ]}
+      onPress={onLogout}
+      accessibilityLabel="Sign out"
+    >
       <Text style={styles.buttonText}>Sign Out</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

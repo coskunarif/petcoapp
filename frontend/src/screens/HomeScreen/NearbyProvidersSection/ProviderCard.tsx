@@ -20,17 +20,19 @@ const ProviderCard: React.FC<Props> = ({ provider, onPress }) => (
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.92)', // glassy
-    borderRadius: 20,
-    margin: 12,
-    padding: 18,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 26, // More refined
+    marginVertical: 14,
+    marginHorizontal: 18,
+    paddingVertical: 22,
+    paddingHorizontal: 22,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 14,
+    elevation: 10,
+    shadowColor: '#1A244066', // Modern subtle shadow
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13,
+    shadowRadius: 18,
   },
   avatar: {
     width: 56,

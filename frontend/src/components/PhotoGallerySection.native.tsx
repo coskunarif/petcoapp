@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 interface PhotoGallerySectionProps {
@@ -36,14 +36,28 @@ const PhotoGallerySection: React.FC<PhotoGallerySectionProps> = ({ photos, onUpl
         {photos.map((photo, idx) => (
           <View key={idx} style={styles.photoContainer}>
             <Image source={{ uri: photo }} style={styles.photo} />
-            <TouchableOpacity style={styles.remove} onPress={() => handleRemovePhoto(idx)}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.remove,
+                pressed && { backgroundColor: '#b71c1c', transform: [{ scale: 0.93 }], opacity: 0.85 },
+              ]}
+              onPress={() => handleRemovePhoto(idx)}
+              accessibilityLabel="Remove photo"
+            >
               <Text style={{ color: '#fff', fontWeight: 'bold' }}>×</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
-        <TouchableOpacity style={styles.addButton} onPress={handlePickImage}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.addButton,
+            pressed && { backgroundColor: '#1565c0', transform: [{ scale: 0.95 }], opacity: 0.9 },
+          ]}
+          onPress={handlePickImage}
+          accessibilityLabel="Add photo"
+        >
           <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
       {uploadProgress > 0 && uploadProgress < 100 && (
         <View style={styles.progressRow}>

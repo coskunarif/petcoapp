@@ -85,42 +85,90 @@ const PetDetailModal: React.FC = () => {
     <div
       role="dialog"
       aria-modal="true"
+      tabIndex={-1}
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         width: '100vw',
         height: '100vh',
-        background: 'rgba(0,0,0,0.3)',
+        background: 'rgba(24,38,63,0.22)', // subtle overlay
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2000,
+        outline: 'none',
       }}
     >
       <div
         style={{
-          background: '#fff',
-          borderRadius: 16,
-          width: 400,
-          maxWidth: '95vw',
-          padding: 24,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+          background: 'rgba(255,255,255,0.82)',
+          borderRadius: 28,
+          width: 420,
+          maxWidth: '96vw',
+          padding: 32,
+          boxShadow: '0 8px 32px 0 rgba(74,144,226,0.18), 0 1.5px 8px 0 rgba(173,216,255,0.12)',
+          border: '1.2px solid rgba(173,216,255,0.14)',
+          margin: '0 16px',
+          outline: 'none',
         }}
+        tabIndex={0}
       >
-        <h2 style={{ marginTop: 0 }}>{form.id ? 'Edit Pet' : 'Add Pet'}</h2>
-        {error && <div style={{ color: 'red', marginBottom: 12 }}>{error}</div>}
+        <h2 style={{
+          marginTop: 0,
+          fontSize: 26,
+          fontWeight: 700,
+          marginBottom: 14,
+          textAlign: 'center',
+          color: '#223a5f',
+          letterSpacing: 0.2,
+          fontFamily: 'system-ui, sans-serif',
+          textShadow: '0 2px 8px rgba(74,144,226,0.08)'
+        }}>{form.id ? 'Edit Pet' : 'Add Pet'}</h2>
+        {error && <div style={{ color: '#e53935', marginBottom: 16, fontWeight: 600, fontSize: 15, textAlign: 'center', letterSpacing: 0.2 }}>{error}</div>}
         <BasicInfoSection form={form} onChange={handleChange} />
         <CareInstructionsSection care={form.care || {}} onChange={handleCareChange} />
         <PhotoGallerySection photos={form.photos || []} onUpload={handleImageUpload} uploadProgress={uploadProgress} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-          <button onClick={handleCancel} disabled={saving} style={{ padding: '8px 20px', borderRadius: 6, border: '1px solid #ccc', background: '#fafafa', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, marginTop: 28 }}>
+          <button
+            onClick={handleCancel}
+            disabled={saving}
+            style={{
+              flex: 1,
+              padding: '14px 0',
+              borderRadius: 16,
+              background: 'rgba(255,255,255,0.68)',
+              border: '1.2px solid #b4c7e7',
+              color: '#5774a6',
+              fontWeight: 700,
+              fontSize: 16,
+              letterSpacing: 0.1,
+              marginRight: 8,
+              boxShadow: '0 2px 6px rgba(180,199,231,0.10)',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              outline: 'none',
+            }}
+          >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ padding: '8px 24px', borderRadius: 6, border: 'none', background: '#1976d2', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+            style={{
+              flex: 1,
+              padding: '14px 0',
+              borderRadius: 16,
+              background: '#1976d2',
+              border: 'none',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: 16,
+              letterSpacing: 0.1,
+              marginLeft: 8,
+              boxShadow: '0 4px 16px rgba(25,118,210,0.16)',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              outline: 'none',
+            }}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>

@@ -83,21 +83,21 @@ const PetDetailModal: React.FC = () => {
   };
 
   return (
-    <Modal visible transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-            <Text style={styles.title}>{form.id ? 'Edit Pet' : 'Add Pet'}</Text>
+    <Modal visible transparent animationType="fade">
+      <View style={styles2025.overlay}>
+        <View style={styles2025.glassModal}>
+          <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+            <Text style={styles2025.title}>{form.id ? 'Edit Pet' : 'Add Pet'}</Text>
             <BasicInfoSection form={form} onChange={handleChange} />
             <CareInstructionsSection care={form.care || {}} onChange={handleCareChange} />
             <PhotoGallerySection photos={form.photos || []} onUpload={handleImageUpload} uploadProgress={uploadProgress} onChange={handlePhotosChange} />
-            {error && <Text style={styles.error}>{error}</Text>}
-            <View style={styles.row}>
-              <TouchableOpacity style={styles.cancel} onPress={handleCancel} disabled={saving}>
-                <Text style={styles.cancelText}>Cancel</Text>
+            {error && <Text style={styles2025.error}>{error}</Text>}
+            <View style={styles2025.row}>
+              <TouchableOpacity style={styles2025.cancel} onPress={handleCancel} disabled={saving}>
+                <Text style={styles2025.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.save} onPress={handleSave} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save</Text>}
+              <TouchableOpacity style={styles2025.save} onPress={handleSave} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles2025.saveText}>Save</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -107,57 +107,95 @@ const PetDetailModal: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles2025 = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.44)',
+    backgroundColor: 'rgba(24,38,63,0.22)', // subtle overlay
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 0,
   },
-  modal: {
-    width: '92%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    maxHeight: '90%',
+  glassModal: {
+    width: '94%',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderRadius: 28,
+    padding: 28,
+    maxHeight: '92%',
+    shadowColor: '#4a90e2',
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 24,
+    borderWidth: 1.2,
+    borderColor: 'rgba(173, 216, 255, 0.14)',
+    // Glassmorphism blur (optional, fallback to soft background)
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 18,
     textAlign: 'center',
+    color: '#223a5f',
+    letterSpacing: 0.2,
+    fontFamily: 'System', // modern system font
+    textShadowColor: 'rgba(74,144,226,0.08)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   error: {
-    color: 'red',
+    color: '#e53935',
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 16,
+    fontWeight: '600',
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    gap: 14,
+    marginTop: 28,
   },
   cancel: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: '#eee',
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.68)',
+    borderWidth: 1.2,
+    borderColor: '#b4c7e7',
+    alignItems: 'center',
+    marginRight: 8,
+    shadowColor: '#b4c7e7',
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cancelText: {
-    color: '#555',
-    fontWeight: 'bold',
+    color: '#5774a6',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.1,
   },
   save: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
     backgroundColor: '#1976d2',
+    alignItems: 'center',
+    marginLeft: 8,
+    shadowColor: '#1976d2',
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.1,
   },
 });
+
 
 export default PetDetailModal;

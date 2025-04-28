@@ -8,34 +8,56 @@ interface PetsListProps {
   pets: Pet[];
 }
 
+import ConfirmationModal from '../../components/ConfirmationModal.native';
+
 const PetsList: React.FC<PetsListProps> = ({ pets }) => {
   const dispatch = useDispatch();
+  const [confirmVisible, setConfirmVisible] = React.useState(false);
+  const [petToDelete, setPetToDelete] = React.useState<Pet | null>(null);
 
   const handleEdit = (pet: Pet) => {
     dispatch(setEditingPet(pet));
   };
 
   const handleDelete = (pet: Pet) => {
-    // Use Alert for confirmation in React Native
-    // You can replace with a better dialog if you like
-    if (global.confirm) {
-      if (global.confirm(`Are you sure you want to delete ${pet.name}?`)) {
-        dispatch(deletePetAsync(pet.id) as any);
-      }
-    } else {
-      dispatch(deletePetAsync(pet.id) as any);
+    setPetToDelete(pet);
+    setConfirmVisible(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (petToDelete) {
+      dispatch(deletePetAsync(petToDelete.id) as any);
     }
+    setConfirmVisible(false);
+    setPetToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmVisible(false);
+    setPetToDelete(null);
   };
 
   return (
-    <FlatList
-      data={pets}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <PetCard pet={item} onEdit={handleEdit} onDelete={handleDelete} />
-      )}
-      contentContainerStyle={styles.list}
-    />
+    <>
+      <FlatList
+        data={pets}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <PetCard pet={item} onEdit={handleEdit} onDelete={handleDelete} />
+        )}
+        contentContainerStyle={styles.list}
+      />
+      <ConfirmationModal
+        visible={confirmVisible}
+        message={`Are you sure you want to delete${petToDelete ? ` ${petToDelete.name}` : ''}?`}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        iconName="delete-outline"
+        iconColor="#d32f2f"
+      />
+    </>
   );
 };
 

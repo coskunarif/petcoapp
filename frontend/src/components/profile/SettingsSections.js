@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Switch, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Switch, Pressable, StyleSheet } from 'react-native';
 
 function SectionHeader({ title }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
@@ -15,10 +15,17 @@ function SettingItem({ label, value, onValueChange, type = 'switch', onPress }) 
     );
   }
   return (
-    <TouchableOpacity style={styles.settingItem} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.settingItem,
+        pressed && { backgroundColor: '#f3f7fd', transform: [{ scale: 0.98 }], opacity: 0.85 },
+      ]}
+      onPress={onPress}
+      accessibilityLabel={label}
+    >
       <Text style={styles.settingLabel}>{label}</Text>
       <Text style={styles.settingArrow}>{'>'}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
