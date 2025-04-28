@@ -5,10 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 export default function CreditSummaryCard({ credits = 0 }) {
   return (
     <View style={styles.card}>
-      <MaterialCommunityIcons name="wallet" size={32} color="#1e88e5" style={styles.icon} />
+      <MaterialCommunityIcons name="wallet" size={36} color="#fff" style={styles.icon} />
       <View style={styles.info}>
-        <Text style={styles.label}>Credits</Text>
-        <Text style={styles.credits}>{credits}</Text>
+        <Text style={styles.label}>Credit Balance</Text>
+        <Text style={styles.credits}>${credits}.00</Text>
       </View>
     </View>
   );
@@ -18,30 +18,33 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#7B61FF',
+    borderRadius: 24,
     marginHorizontal: 16,
-    marginTop: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginTop: 18,
+    padding: 24,
+    shadowColor: '#7B61FF',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
   icon: {
-    marginRight: 16,
+    marginRight: 18,
   },
   info: {
     flex: 1,
   },
   label: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 2,
+    fontSize: 16,
+    color: '#fff',
+    marginBottom: 4,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   credits: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#1e88e5',
+    color: '#fff',
+    letterSpacing: 1,
   },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import CreditSummaryCard from '../../components/profile/CreditSummaryCard';
 import SettingsSections from '../../components/profile/SettingsSections';
@@ -34,13 +34,13 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ProfileHeader user={mockUser} onEditProfile={handleEditProfile} />
-      <CreditSummaryCard credits={120} />
-      <SettingsSections settings={settings} onChange={handleSettingsChange} />
-      <View style={{ flex: 1, minHeight: 300 }}>
-        <ProfileTabView user={mockUser} />
-      </View>
-      <View style={{ flex: 0 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <ProfileHeader user={mockUser} onEditProfile={handleEditProfile} />
+        <CreditSummaryCard credits={120} />
+        <SettingsSections settings={settings} onChange={handleSettingsChange} />
+
+      </ScrollView>
+      <View style={{ padding: 16 }}>
         <LogoutButton onLogout={() => Alert.alert('Sign Out', 'Sign out pressed!')} />
       </View>
     </View>
