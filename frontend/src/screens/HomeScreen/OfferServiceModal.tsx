@@ -25,11 +25,18 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug logging for serviceTypes
+  useEffect(() => {
+    console.log('[OfferServiceModal] serviceTypes:', serviceTypes);
+    console.log('[OfferServiceModal] serviceTypes length:', serviceTypes?.length);
+  }, [serviceTypes]);
+
   // Reset state when modal becomes visible
   useEffect(() => {
     if (visible) {
       // Set default selected type if serviceTypes is not empty
       setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
+      console.log('[OfferServiceModal] Setting selectedServiceTypeId:', serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
       setDescription('');
       setCost('');
       setAvailability('');
@@ -72,13 +79,20 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedServiceTypeId}
-              onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
+              onValueChange={(itemValue) => {
+                console.log('[OfferServiceModal] Selected service type ID:', itemValue);
+                setSelectedServiceTypeId(itemValue);
+              }}
               style={styles.picker}
               enabled={!submitting}
             >
-              {serviceTypes.map((st) => (
-                <Picker.Item key={st.id} label={st.name} value={st.id} />
-              ))}
+              {serviceTypes && serviceTypes.length > 0 ? (
+                serviceTypes.map((st) => (
+                  <Picker.Item key={st.id} label={st.name} value={st.id} />
+                ))
+              ) : (
+                <Picker.Item label="No service types available" value={undefined} />
+              )}
             </Picker>
           </View>
           <TextInput
@@ -165,8 +179,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 12,
     backgroundColor: '#f7f8fa',
-    height: 50, // Standard height for picker container
     justifyContent: 'center',
+    height: 75 // Standard height for picker container
+    // overflow: 'hidden', // Add overflow hidden
   },
   picker: {
      // Basic styling, adjust as needed

@@ -22,5 +22,12 @@ export async function fetchServices({ type, location, distance, availability, pr
   // Add availability filtering if provided
   // Debug: Log final query before return
   console.log('[fetchServices] final query:', query);
-  return query;
+  try {
+    const response = await query;
+    console.log('[fetchServices] query executed:', response);
+    return response;
+  } catch (error) {
+    console.error('[fetchServices] query error:', error);
+    throw error;
+  }
 }

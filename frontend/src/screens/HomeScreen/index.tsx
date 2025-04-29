@@ -1,5 +1,7 @@
 import React, { useCallback, useState, useEffect } from 'react'; // Import useState, useEffect
 import supabase from '../../supabaseClient';
+// Import the other supabase client for comparison
+import { supabase as supabaseLib } from '../../lib/supabase';
 import { SafeAreaView, ScrollView, RefreshControl, StyleSheet, View } from 'react-native';
 import CreditBalanceCard from './CreditBalanceCard';
 import UpcomingServicesSection from './UpcomingServicesSection';
@@ -85,20 +87,52 @@ function HomeScreen() {
   // Fetch service types on mount
   useEffect(() => {
     const fetchServiceTypes = async () => {
+      console.log('[HomeScreen] Starting to fetch service types');
       setServiceTypesLoading(true);
       setServiceTypesError(null);
       try {
-        const { data, error } = await supabase
+        console.log('[HomeScreen] Making request to service_types table');
+        
+        // First try with the main supabase client
+        console.log('[HomeScreen] Trying with main supabase client');
+        const response = await supabase
           .from('service_types')
           .select('id, name');
-
+        
+        let { data, error, status, statusText } = response;
+        
+        // If that fails, try with the lib client
         if (error) {
+          console.error('[HomeScreen] Error with main client:', error);
+          console.log('[HomeScreen] Trying with lib supabase client as fallback');
+          
+          const libResponse = await supabaseLib
+            .from('service_types')
+            .select('id, name');
+          
+          data = libResponse.data;
+          error = libResponse.error;
+          status = libResponse.status;
+          statusText = libResponse.statusText;
+        }
+
+        console.log('[HomeScreen] Service types response:', { data, error, status, statusText });
+        
+        if (error) {
+          console.error('[HomeScreen] Error fetching service types:', error);
           throw error;
         }
+        
+        if (!data || data.length === 0) {
+          console.warn('[HomeScreen] No service types returned from database');
+        } else {
+          console.log('[HomeScreen] Service types fetched successfully:', data);
+        }
+        
         // Ensure data is treated as ServiceType[]
         setServiceTypes((data as ServiceType[]) || []);
       } catch (err: any) {
-        console.error("Failed to fetch service types:", err);
+        console.error("[HomeScreen] Failed to fetch service types:", err);
         setServiceTypesError(err.message || 'Could not load service types.');
       } finally {
         setServiceTypesLoading(false);
@@ -220,6 +254,17 @@ function HomeScreen() {
         onSubmit={handleOfferService}
         serviceTypes={serviceTypes} // Pass serviceTypes array to the modal
       />
+      {/* Debug info for service types */}
+      {serviceTypesError && (
+        <View style={{ position: 'absolute', top: 40, right: 10, backgroundColor: 'rgba(255,0,0,0.1)', padding: 5, borderRadius: 5, zIndex: 1000 }}>
+          <Text style={{ color: 'red', fontSize: 10 }}>Service Types Error: {serviceTypesError}</Text>
+        </View>
+      )}
+      {serviceTypesLoading && (
+        <View style={{ position: 'absolute', top: 40, right: 10, backgroundColor: 'rgba(0,0,255,0.1)', padding: 5, borderRadius: 5, zIndex: 1000 }}>
+          <Text style={{ color: 'blue', fontSize: 10 }}>Loading service types...</Text>
+        </View>
+      )}
       <RequestServiceModal
         visible={requestModalVisible}
         onClose={() => setRequestModalVisible(false)}
