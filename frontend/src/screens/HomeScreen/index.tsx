@@ -1,9 +1,12 @@
 import React, { useCallback } from 'react';
+import supabase from '../../supabaseClient';
 import { SafeAreaView, ScrollView, RefreshControl, StyleSheet, View } from 'react-native';
 import CreditBalanceCard from './CreditBalanceCard';
 import UpcomingServicesSection from './UpcomingServicesSection';
 import NearbyProvidersSection from './NearbyProvidersSection';
 import QuickActionsSection from './QuickActionsSection';
+import OfferServiceModal from './OfferServiceModal';
+import RequestServiceModal from './RequestServiceModal';
 import { FAB } from 'react-native-paper';
 import { useHomeDashboardData, useServiceRequestsSubscription } from './hooks';
 import { useSelector, useDispatch } from 'react-redux';
@@ -55,7 +58,44 @@ const mockDashboardData: DashboardData = {
   ],
 };
 
-const HomeScreen: React.FC = () => {
+function HomeScreen() {
+  // Modal state
+  const [offerModalVisible, setOfferModalVisible] = React.useState(false);
+  const [requestModalVisible, setRequestModalVisible] = React.useState(false);
+  // TODO: Replace with real user pets if needed
+  const userPets = [];
+
+  // Handler for offering a service
+  const handleOfferService = async (service: { type: string; description: string; cost: string; availability: string }) => {
+    try {
+      // Insert into Supabase services table
+      const { data, error } = await supabase
+        .from('services')
+        .insert([
+          {
+            ...service,
+            provider_id: user?.id,
+            created_at: new Date().toISOString(),
+            status: 'active',
+          },
+        ]);
+      if (error) throw error;
+      // Optionally: show success feedback or close modal
+    } catch (err: any) {
+      // Optionally: show error feedback
+      console.error('Failed to offer service:', err.message || err);
+    }
+  };
+    // Optionally refetch dashboard data here
+
+  // Handler for requesting a service
+  const handleRequestService = async (request: { type: string; description: string; date: string; pet: string }) => {
+    // Replace with Supabase API call
+    // await supabase.from('service_requests').insert([{ ...request, requester_id: user.id }]);
+    console.log('[RequestService] Submitted:', request);
+    // Optionally refetch dashboard data here
+  };
+
   // Use real user from Redux
   const user = useUser();
   const location = useLocation();
@@ -104,6 +144,17 @@ const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <OfferServiceModal
+        visible={offerModalVisible}
+        onClose={() => setOfferModalVisible(false)}
+        onSubmit={handleOfferService}
+      />
+      <RequestServiceModal
+        visible={requestModalVisible}
+        onClose={() => setRequestModalVisible(false)}
+        onSubmit={handleRequestService}
+        pets={userPets}
+      />
       {effectiveDashboardData.error && (
         <View style={{ backgroundColor: '#ffcdd2', padding: 10, margin: 8, borderRadius: 8 }}>
           <Text style={{ color: '#b71c1c', textAlign: 'center' }}>
@@ -159,12 +210,16 @@ const HomeScreen: React.FC = () => {
         <View style={styles.sectionDivider} />
 
         {/* Quick Actions Section */}
-        <QuickActionsSection onCreateRequestPress={() => {}} onOfferServicePress={() => {}} />
+        <QuickActionsSection
+          onCreateRequestPress={() => setRequestModalVisible(true)}
+          onOfferServicePress={() => setOfferModalVisible(true)}
+        />
       </ScrollView>
       <FAB style={styles.fab} icon="plus" onPress={() => {}} />
     </SafeAreaView>
   );
-};
+}
+export default HomeScreen;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -262,4 +317,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
