@@ -9,7 +9,7 @@ export async function fetchServices({ type, location, distance, availability, pr
 } = {}) {
   // Debug: Log input params
   console.log('[fetchServices] called with:', { type, location, distance, availability, provider_id });
-  let query = supabase.from('service_listings').select('*');
+  let query = supabase.from('service_listings').select('*, users(full_name), service_types(credit_value)');
   // Debug: Log query object before filters
   console.log('[fetchServices] initial query:', query);
   if (type) query = query.eq('type', type);

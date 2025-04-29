@@ -44,9 +44,9 @@ export default function ServiceCard({ service }: { service: any }) {
           <View style={styles.accentBorder}>
             <View style={styles.gradientBg}>
               <Card.Content>
-                <Title>{service.type} by {service.provider}</Title>
-                <Paragraph>{service.description}</Paragraph>
-                <Paragraph>Cost: {service.cost} credits</Paragraph>
+                <Title>{service.title || service.name}</Title>
+                <Paragraph>Provider: {service.users?.full_name || 'N/A'}</Paragraph>
+                <Paragraph>Cost: {service.service_types?.credit_value || 0} credits</Paragraph>
               </Card.Content>
             </View>
           </View>
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   accentBorder: {
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: 'rgba(44, 62, 80, 0.08)', // subtle premium accent
+    borderColor: 'rgba(44, 62, 80, 0.08)',
     overflow: 'hidden',
   },
   gradientBg: {
