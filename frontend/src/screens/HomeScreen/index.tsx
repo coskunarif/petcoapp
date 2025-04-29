@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react'; // Import useState, useEffect
 import supabase from '../../supabaseClient';
 import { SafeAreaView, ScrollView, RefreshControl, StyleSheet, View } from 'react-native';
 import CreditBalanceCard from './CreditBalanceCard';
@@ -12,6 +12,15 @@ import { useHomeDashboardData, useServiceRequestsSubscription } from './hooks';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchHomeDashboard } from './homeSlice';
 import { Text } from 'react-native';
+// Remove incorrect import
+// import { ServiceType } from './OfferServiceModal';
+
+// Define ServiceType interface locally
+interface ServiceType {
+  id: string;
+  name: string;
+}
+
 // Use real user from Redux
 const useUser = () => useSelector((state: any) => state.auth.user);
 // You may want to use a real location hook here
@@ -61,30 +70,91 @@ const mockDashboardData: DashboardData = {
 function HomeScreen() {
   // Modal state
   const [offerModalVisible, setOfferModalVisible] = React.useState(false);
-  const [requestModalVisible, setRequestModalVisible] = React.useState(false);
+  const [requestModalVisible, setRequestModalVisible] = useState(false);
+  // State for fetched service types
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [serviceTypesLoading, setServiceTypesLoading] = useState(true);
+  const [serviceTypesError, setServiceTypesError] = useState<string | null>(null);
+
   // TODO: Replace with real user pets if needed
   const userPets = [];
 
-  // Handler for offering a service
-  const handleOfferService = async (service: { type: string; description: string; cost: string; availability: string }) => {
+  // Remove the hardcoded serviceTypes array
+  // const serviceTypes = [ ... ];
+
+  // Fetch service types on mount
+  useEffect(() => {
+    const fetchServiceTypes = async () => {
+      setServiceTypesLoading(true);
+      setServiceTypesError(null);
+      try {
+        const { data, error } = await supabase
+          .from('service_types')
+          .select('id, name');
+
+        if (error) {
+          throw error;
+        }
+        // Ensure data is treated as ServiceType[]
+        setServiceTypes((data as ServiceType[]) || []);
+      } catch (err: any) {
+        console.error("Failed to fetch service types:", err);
+        setServiceTypesError(err.message || 'Could not load service types.');
+      } finally {
+        setServiceTypesLoading(false);
+      }
+    };
+
+    fetchServiceTypes();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+
+  // Handler for offering a service - Updated signature
+  const handleOfferService = async (service: { service_type_id: string; description: string; cost: string; availability: string }) => {
+    // --- Start of changes ---
+
+    // Find the service type name based on the ID for the title
+    const selectedServiceType = serviceTypes.find(st => st.id === service.service_type_id);
+    const title = selectedServiceType ? selectedServiceType.name : 'Unknown Service'; // Fallback title
+
+    // Remove the lookup logic, ID is now provided directly
+    // const foundType = serviceTypes.find(st => st.name.toLowerCase() === service.type.toLowerCase());
+    // if (!foundType) { ... }
+
+    const serviceListingData = {
+      provider_id: user?.id,
+      service_type_id: service.service_type_id, // Use the ID directly from the argument
+      title: title, // Use the looked-up name for the title
+      description: service.description,
+      location: `POINT(${location.lng} ${location.lat})`, // Format for PostGIS geography
+      availability_schedule: { notes: service.availability }, // Simple JSON structure
+      is_active: true, // Correct column name and type
+      // created_at is handled by default value in DB
+      // cost is omitted as it's not in service_listings
+    };
+
+    console.log('[OfferService] Attempting to insert:', serviceListingData); // Log data before insert
+
     try {
-      // Insert into Supabase services table
+      // Insert into Supabase service_listings table
       const { data, error } = await supabase
-        .from('services')
-        .insert([
-          {
-            ...service,
-            provider_id: user?.id,
-            created_at: new Date().toISOString(),
-            status: 'active',
-          },
-        ]);
-      if (error) throw error;
+        .from('service_listings') // Correct table name
+        .insert([serviceListingData]); // Use the structured data
+
+      if (error) {
+        console.error('Supabase insert error:', error); // Log the full error object
+        throw error; // Re-throw to be caught below
+      }
+
+      console.log('[OfferService] Successfully inserted:', data);
       // Optionally: show success feedback or close modal
+      refetch(); // Refetch dashboard data after successful insert
     } catch (err: any) {
-      // Optionally: show error feedback
-      console.error('Failed to offer service:', err.message || err);
+      // Log the detailed error
+      console.error('Failed to offer service:', err);
+      // Optionally: show error feedback to the user in the modal
     }
+    // --- End of changes ---
   };
     // Optionally refetch dashboard data here
 
@@ -148,6 +218,7 @@ function HomeScreen() {
         visible={offerModalVisible}
         onClose={() => setOfferModalVisible(false)}
         onSubmit={handleOfferService}
+        serviceTypes={serviceTypes} // Pass serviceTypes array to the modal
       />
       <RequestServiceModal
         visible={requestModalVisible}

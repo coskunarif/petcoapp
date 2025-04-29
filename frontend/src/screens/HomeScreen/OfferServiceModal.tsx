@@ -1,32 +1,59 @@
-import React, { useState } from 'react';
-import { Modal, View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { Picker } from '@react-native-picker/picker'; // Import Picker
+
+// Define the structure for a service type
+interface ServiceType {
+  id: string;
+  name: string;
+}
 
 interface OfferServiceModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (service: { type: string; description: string; cost: string; availability: string }) => void;
+  // Update onSubmit signature to expect service_type_id
+  onSubmit: (service: { service_type_id: string; description: string; cost: string; availability: string }) => void;
+  serviceTypes: ServiceType[]; // Add prop for service types
 }
 
-const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose, onSubmit }) => {
-  const [type, setType] = useState('');
+const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose, onSubmit, serviceTypes }) => {
+  // State now holds the selected service_type_id
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [cost, setCost] = useState('');
   const [availability, setAvailability] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset state when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      // Set default selected type if serviceTypes is not empty
+      setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
+      setDescription('');
+      setCost('');
+      setAvailability('');
+      setError(null);
+      setSubmitting(false);
+    }
+  }, [visible, serviceTypes]);
+
+
   const handleSubmit = async () => {
     setError(null);
-    if (!type || !description || !cost) {
+    // Check if a service type is selected
+    if (!selectedServiceTypeId || !description || !cost) {
       setError('Please fill in all required fields.');
       return;
     }
     setSubmitting(true);
     try {
-      await onSubmit({ type, description, cost, availability });
-      setType('');
-      setDescription('');
-      setCost('');
+      // Pass the selected ID instead of the name string
+      await onSubmit({ service_type_id: selectedServiceTypeId, description, cost, availability });
+      // Reset state (handled by useEffect now)
+      // setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
+      // setDescription('');
+      // setCost('');
       setAvailability('');
       onClose();
     } catch (e: any) {
@@ -41,15 +68,21 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <Text style={styles.header}>Offer a Service</Text>
+          {/* Replace TextInput with Picker */}
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedServiceTypeId}
+              onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
+              style={styles.picker}
+              enabled={!submitting}
+            >
+              {serviceTypes.map((st) => (
+                <Picker.Item key={st.id} label={st.name} value={st.id} />
+              ))}
+            </Picker>
+          </View>
           <TextInput
-            style={styles.input}
-            placeholder="Service Type (e.g. Dog Walking)"
-            value={type}
-            onChangeText={setType}
-            editable={!submitting}
-          />
-          <TextInput
-            style={[styles.input, { height: 64 }]}
+            style={[styles.input, styles.textArea]}
             placeholder="Description"
             value={description}
             onChangeText={setDescription}
@@ -115,10 +148,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e7ef',
     borderRadius: 10,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14, // Slightly more horizontal padding
     marginBottom: 12,
     fontSize: 16,
     backgroundColor: '#f7f8fa',
+    color: '#333', // Ensure text color is visible
+  },
+  textArea: {
+    height: 80, // Increase height for description
+    textAlignVertical: 'top', // Align text to top for multiline
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#e0e7ef',
+    borderRadius: 10,
+    marginBottom: 12,
+    backgroundColor: '#f7f8fa',
+    height: 50, // Standard height for picker container
+    justifyContent: 'center',
+  },
+  picker: {
+     // Basic styling, adjust as needed
+     width: '100%',
+     height: '100%',
+     color: '#333',
   },
   buttonRow: {
     flexDirection: 'row',
