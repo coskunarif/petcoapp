@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import { useSelector } from 'react-redux';
-import { useNavigation } from '@react-navigation/native';
 
 const Stack = createStackNavigator();
 
@@ -26,7 +25,6 @@ export default function RootNavigator() {
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       )}
-      <Stack.Screen name="Main" component={MainFallbackScreen} />
     </Stack.Navigator>
   );
 }

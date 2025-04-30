@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../supabaseClient';
 import { useDispatch } from 'react-redux';
 import { loginStart, loginSuccess, loginFailure } from '../../redux/slices/authSlice';
 

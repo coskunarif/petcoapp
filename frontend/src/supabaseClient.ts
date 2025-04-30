@@ -1,10 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
-
 import Constants from 'expo-constants';
 
-const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// Debugging manifest structure
+// Directly read environment variables
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+console.log('Supabase URL from process.env:', supabaseUrl);
+console.log('Supabase Anon Key from process.env:', supabaseAnonKey ? 'Key is present' : 'Key is missing');
 
-export default supabase;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables:', {
+    url: supabaseUrl ? supabaseUrl : 'missing',
+    anonKey: supabaseAnonKey ? 'present' : 'missing'
+  });
+  
+  if (!supabaseUrl) {
+    throw new Error('supabaseUrl is required.');
+  }
+  
+  if (!supabaseAnonKey) {
+    throw new Error('supabaseAnonKey is required.');
+  }
+}
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey
+);

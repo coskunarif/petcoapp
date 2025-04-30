@@ -9,9 +9,6 @@ import AddPetFAB from './AddPetFAB.native';
 import PetDetailModal from './PetDetailModal.native';
 
 const PetsScreen: React.FC = () => {
-  // Debug: log full Redux state
-  const fullState = useSelector((state: RootState) => state);
-  console.log('[PetsScreen] Full Redux state:', fullState);
   const dispatch = useDispatch();
   const { petsList, loading, error, editingPet } = useSelector((state: RootState) => state.pets);
   console.log('[PetsScreen] useSelector petsList:', petsList, 'loading:', loading, 'error:', error, 'editingPet:', editingPet);

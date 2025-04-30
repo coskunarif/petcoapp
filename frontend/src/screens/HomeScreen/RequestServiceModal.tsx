@@ -1,27 +1,30 @@
-import React, { useState } from 'react';
-import supabase from '../../supabaseClient';
-import { Modal, View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
-import DatePicker from 'expo-datepicker';
+import React, { useState, useEffect } from 'react';
+import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { supabase } from '../../supabaseClient';
 
 interface RequestServiceModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (request: { type: string; description: string; date: string; pet: string }) => void;
+  onSubmit: (request: { service_type_id: string; description: string; date: string; pet_id?: string }) => void;
+  serviceTypes: { id: string; name: string }[];
   pets?: { id: string; name: string }[];
 }
 
-const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onClose, onSubmit, pets }) => {
-  const [type, setType] = useState('');
+const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onClose, onSubmit, serviceTypes, pets }) => {
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState('');
-  // Store date as a string in ISO format (or empty)
-  const [date, setDate] = useState<string>('');
+  // Store Date object for the picker and ISO string for submission
+  const [selectedDateObj, setSelectedDateObj] = useState(new Date());
+  const [date, setDate] = useState<string>(selectedDateObj.toISOString()); // ISO string for submission logic
   const [pet, setPet] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setError(null);
-    if (!type || !description || !date) {
+    if (!selectedServiceTypeId || !description || !date) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -34,36 +37,57 @@ const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onCl
         .from('service_requests')
         .insert([
           {
-            type,
+            service_type_id: selectedServiceTypeId,
             description,
             date,
-            pet_id: pet || null,
+            pet_id: pet,
             requester_id,
             status: 'pending',
             created_at: new Date().toISOString(),
           },
         ]);
       if (error) throw error;
-      if (onSubmit) onSubmit({ type, description, date, pet });
+      if (onSubmit) onSubmit({
+        service_type_id: selectedServiceTypeId!,
+        description,
+        date,
+        pet_id: pet
+      });
       onClose();
-      setType('');
+      setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
       setDescription('');
-      setDate('');
+      // Reset date state
+      const now = new Date();
+      setSelectedDateObj(now);
+      setDate(now.toISOString());
       setPet('');
     } catch (err: any) {
       setError(err.message || 'Failed to submit request');
     } finally {
       setSubmitting(false);
-      setDate('');
+      // Ensure date is reset even on failure before closing
+      const now = new Date();
+      setSelectedDateObj(now);
+      setDate(now.toISOString());
       setPet('');
       onClose();
     }
   }
+// Reset state when modal becomes visible
+useEffect(() => {
+  if (visible) {
+    setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
+    setDescription('');
+    // Reset date state
+    const now = new Date();
+    setSelectedDateObj(now);
+    setDate(now.toISOString());
+    setPet('');
+    setError(null);
+    setSubmitting(false);
+  }
+}, [visible, serviceTypes]);
 
-  // Date/time picker handler for expo-datepicker
-  const handleDateChange = (selectedDate: Date) => {
-    setDate(selectedDate.toISOString());
-  };
 
 
   return (
@@ -71,13 +95,22 @@ const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onCl
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <Text style={styles.header}>Request a Service</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Service Needed (e.g. Pet Sitting)"
-            value={type}
-            onChangeText={setType}
-            editable={!submitting}
-          />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedServiceTypeId}
+              onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
+              style={styles.picker}
+              enabled={!submitting}
+            >
+              {serviceTypes && serviceTypes.length > 0 ? (
+                serviceTypes.map((st) => (
+                  <Picker.Item key={st.id} label={st.name} value={st.id} />
+                ))
+              ) : (
+                <Picker.Item label="No service types available" value={undefined} />
+              )}
+            </Picker>
+          </View>
           <TextInput
             style={[styles.input, { height: 64 }]}
             placeholder="Description / Special Instructions"
@@ -90,14 +123,24 @@ const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onCl
             For Expo Go compatibility, use a simple TextInput for date/time.
             If you later use a custom dev client, you can add a calendar/time picker here.
           */}
-          <TextInput
-            style={styles.input}
-            placeholder="Preferred Date/Time (YYYY-MM-DD HH:mm)"
-            value={date}
-            onChangeText={setDate}
-            editable={!submitting}
-            autoCapitalize="none"
-            autoCorrect={false}
+          <DateTimePicker
+            value={selectedDateObj} // Use Date object state for value
+            mode="datetime"
+            display="spinner" // 'spinner' is generally safer inside modals on Android
+            onChange={(event, newSelectedDate) => {
+              // Update Date object state regardless of event type
+              const currentDate = newSelectedDate || selectedDateObj; // Fallback to previous date if undefined
+              setSelectedDateObj(currentDate);
+
+              // Update ISO string state only if a date was explicitly set
+              if (event.type === 'set' && newSelectedDate) {
+                setDate(newSelectedDate.toISOString());
+              }
+              // No explicit dismiss needed for spinner mode
+            }}
+            style={styles.datePicker}
+            textColor="#333" // Ensure text is visible
+            minimumDate={new Date()}
           />
           {pets && pets.length > 0 && (
             <TextInput
@@ -124,6 +167,27 @@ const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onCl
 };
 
 const styles = StyleSheet.create({
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#e0e7ef',
+    borderRadius: 10,
+    marginBottom: 12,
+    backgroundColor: '#f7f8fa',
+    justifyContent: 'center',
+    height: 75
+  },
+  picker: {
+    width: '100%',
+    height: '100%',
+    color: '#333',
+  },
+  datePicker: {
+    marginBottom: 12,
+    backgroundColor: '#f7f8fa',
+    borderRadius: 10,
+      borderWidth: 1,
+    borderColor: '#e0e7ef',
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',

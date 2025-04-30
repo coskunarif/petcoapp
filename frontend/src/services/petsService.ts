@@ -1,4 +1,4 @@
-import supabase from '../supabaseClient';
+import { supabase } from '../supabaseClient';
 import { Pet } from '../store/petsSlice';
 
 export async function fetchPets(userId: string): Promise<Pet[]> {

@@ -1,4 +1,4 @@
-import supabase from '../supabaseClient';
+import { supabase } from '../supabaseClient';
 
 export const fetchConversations = async (userId: string) => {
   const { data, error } = await supabase.rpc('get_conversations', { p_user_id: userId });

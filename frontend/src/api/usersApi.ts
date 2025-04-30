@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase } from '../supabaseClient';
 
 export async function fetchAllUsersExcept(currentUserId: string) {
   console.log("[DEBUG] Fetching users from API...");

@@ -1,0 +1,18 @@
+# Ignore node dependencies
+node_modules/
+
+# Ignore build outputs
+dist/
+build/
+
+# Ignore environment and secret files
+.env
+secrets.json
+
+# Ignore log and temp files
+*.log
+*.tmp
+
+# Ignore editor settings
+.vscode/
+.DS_Store

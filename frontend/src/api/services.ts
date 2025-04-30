@@ -1,4 +1,4 @@
-import supabase from '../supabaseClient';
+import { supabase } from '../supabaseClient';
 
 export async function fetchServices({ type, location, distance, availability, provider_id }: {
   type?: string;

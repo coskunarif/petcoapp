@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react'; // Import useState, useEffect
-import supabase from '../../supabaseClient';
+import { supabase } from '../../supabaseClient';
 // Import the other supabase client for comparison
 import { supabase as supabaseLib } from '../../lib/supabase';
 import { SafeAreaView, ScrollView, RefreshControl, StyleSheet, View } from 'react-native';
@@ -193,9 +193,22 @@ function HomeScreen() {
     // Optionally refetch dashboard data here
 
   // Handler for requesting a service
-  const handleRequestService = async (request: { type: string; description: string; date: string; pet: string }) => {
+  const handleRequestService = async (request: {
+    service_type_id: string;
+    description: string;
+    date: string;
+    pet_id?: string;
+  }) => {
     // Replace with Supabase API call
-    // await supabase.from('service_requests').insert([{ ...request, requester_id: user.id }]);
+    await supabase.from('service_requests').insert([{
+      service_type_id: request.service_type_id,
+      description: request.description,
+      preferred_time: request.date,
+      pet_id: request.pet_id,
+      requester_id: user?.id,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    }]);
     console.log('[RequestService] Submitted:', request);
     // Optionally refetch dashboard data here
   };
@@ -269,6 +282,7 @@ function HomeScreen() {
         visible={requestModalVisible}
         onClose={() => setRequestModalVisible(false)}
         onSubmit={handleRequestService}
+        serviceTypes={serviceTypes}
         pets={userPets}
       />
       {effectiveDashboardData.error && (

@@ -25,7 +25,7 @@ export default function ServicesScreen() {
             tabBarIcon: ({ color, size }) => {
               let iconName;
               if (route.name === 'BrowseServices') {
-                iconName = 'paw-search';
+                iconName = 'magnify'; // Replaced 'paw-search' with a valid icon
               } else if (route.name === 'MyListings') {
                 iconName = 'format-list-bulleted';
               } else if (route.name === 'Requests') {

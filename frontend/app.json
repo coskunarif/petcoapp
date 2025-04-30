@@ -1,12 +1,34 @@
 {
   "expo": {
-    "extra": {
-      "EXPO_PUBLIC_SUPABASE_URL": "https://fqnjpabvhnhnsfzqsnpi.supabase.co",
-      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxbmpwYWJ2aG5obnNmenFzbnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUwNTI3NTYsImV4cCI6MjA2MDYyODc1Nn0.oVebgo8loYn5a81GMZJil3tfvf-UixWCFfVoVv5f8dU"
+    "name": "PetcoApp",
+    "slug": "petco-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
-    "plugins": [
-      "expo-secure-store"
-    ],
-    "newArchEnabled": true
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.petcoapp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.yourcompany.petcoapp"
+    },
+    "extra": {
+      "supabase": {
+        "url": null,
+        "anonKey": null
+      }
+    }
   }
 }
