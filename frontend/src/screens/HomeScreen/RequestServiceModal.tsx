@@ -15,9 +15,9 @@ interface RequestServiceModalProps {
 const RequestServiceModal: React.FC<RequestServiceModalProps> = ({ visible, onClose, onSubmit, serviceTypes, pets }) => {
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState('');
-  // Store Date object for the picker and ISO string for submission
   const [selectedDateObj, setSelectedDateObj] = useState(new Date());
   const [date, setDate] = useState<string>(selectedDateObj.toISOString()); // ISO string for submission logic
+  const [showDatePicker, setShowDatePicker] = useState(false); // State to control picker visibility
   const [pet, setPet] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +84,9 @@ useEffect(() => {
     setDate(now.toISOString());
     setPet('');
     setError(null);
+    // console.log('[RequestServiceModal] Becoming visible, resetting state.'); // Remove log
     setSubmitting(false);
+    setShowDatePicker(false); // Ensure picker is hidden when modal opens
   }
 }, [visible, serviceTypes]);
 
@@ -123,25 +125,36 @@ useEffect(() => {
             For Expo Go compatibility, use a simple TextInput for date/time.
             If you later use a custom dev client, you can add a calendar/time picker here.
           */}
-          <DateTimePicker
-            value={selectedDateObj} // Use Date object state for value
-            mode="datetime"
-            display="spinner" // 'spinner' is generally safer inside modals on Android
-            onChange={(event, newSelectedDate) => {
-              // Update Date object state regardless of event type
-              const currentDate = newSelectedDate || selectedDateObj; // Fallback to previous date if undefined
-              setSelectedDateObj(currentDate);
+          {/* Touchable area to trigger the date picker */}
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInputTouchable}>
+            <Text style={styles.dateInputText}>
+              {selectedDateObj.toLocaleDateString()} {/* Display selected date only */}
+            </Text>
+          </TouchableOpacity>
 
-              // Update ISO string state only if a date was explicitly set
-              if (event.type === 'set' && newSelectedDate) {
-                setDate(newSelectedDate.toISOString());
-              }
-              // No explicit dismiss needed for spinner mode
-            }}
-            style={styles.datePicker}
-            textColor="#333" // Ensure text is visible
-            minimumDate={new Date()}
-          />
+          {/* Conditionally render the DateTimePicker */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDateObj}
+              mode="date" // Change to date-only mode
+              display="default" // Use 'default' for modal/dialog picker
+              onChange={(event, newSelectedDate) => {
+                // Always hide picker regardless of event type on Android/iOS when using 'default'
+                setShowDatePicker(false);
+                // console.log(`[RequestServiceModal] DateTimePicker onChange event: ${event.type}`); // Remove log
+                if (event.type === 'set' && newSelectedDate) {
+                  // User confirmed a date selection
+                  setSelectedDateObj(newSelectedDate);
+                  setDate(newSelectedDate.toISOString());
+                }
+                // If event.type is 'dismissed', selectedDateObj remains unchanged
+              }}
+              minimumDate={new Date()}
+              // style={styles.datePicker} // Style might not be needed for 'default' display
+              // textColor="#333" // Style might not be needed for 'default' display
+            />
+          )}
+
           {pets && pets.length > 0 && (
             <TextInput
               style={styles.input}
@@ -181,12 +194,20 @@ const styles = StyleSheet.create({
     height: '100%',
     color: '#333',
   },
-  datePicker: {
+  // Removed datePicker style as it might conflict with 'default' display
+  dateInputTouchable: { // Style for the touchable date display
+    borderWidth: 1,
+    borderColor: '#e0e7ef',
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 12,
     backgroundColor: '#f7f8fa',
-    borderRadius: 10,
-      borderWidth: 1,
-    borderColor: '#e0e7ef',
+    height: 50, // Match input height
+    justifyContent: 'center',
+  },
+  dateInputText: { // Style for the date text inside the touchable
+    fontSize: 16,
+    color: '#333',
   },
   overlay: {
     flex: 1,
