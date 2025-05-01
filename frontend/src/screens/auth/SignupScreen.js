@@ -51,7 +51,7 @@ export default function SignupScreen({ navigation }) {
         return;
       }
       dispatch(loginSuccess(user));
-      navigation.replace('Onboarding'); // Or 'Main' if you want to skip onboarding
+      navigation.replace('Onboarding'); // Or 'Tabs' if you want to skip onboarding
     } else {
       setFormError('Signup failed: No user returned');
       dispatch(loginFailure('Signup failed: No user returned'));
@@ -131,4 +131,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
