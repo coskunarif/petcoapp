@@ -1,5 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { useDispatch } from 'react-redux';
+import { logout } from '../../redux/slices/authSlice';
+import { supabase } from '../../supabaseClient';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import CreditSummaryCard from '../../components/profile/CreditSummaryCard';
 import SettingsSections from '../../components/profile/SettingsSections';
@@ -14,6 +17,7 @@ const mockUser = {
 };
 
 export default function ProfileScreen() {
+  const dispatch = useDispatch();
   const [settings, setSettings] = React.useState({
     notifications: true,
     location: false,
@@ -32,6 +36,16 @@ export default function ProfileScreen() {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error.message);
+      Alert.alert('Sign Out Error', error.message);
+    } else {
+      dispatch(logout());
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
@@ -41,7 +55,7 @@ export default function ProfileScreen() {
 
       </ScrollView>
       <View style={{ padding: 16 }}>
-        <LogoutButton onLogout={() => Alert.alert('Sign Out', 'Sign out pressed!')} />
+        <LogoutButton onLogout={handleLogout} />
       </View>
     </View>
   );

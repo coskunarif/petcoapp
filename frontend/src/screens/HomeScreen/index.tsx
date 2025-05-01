@@ -219,6 +219,11 @@ function HomeScreen() {
   // Only use TanStack Query for dashboard data
   const { data: dashboardData, isLoading, error, refetch } = useHomeDashboardData(user?.id, location.lat, location.lng);
 
+  // Define onRefresh callback *before* the early return
+  const onRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
   // Guard: if no user, show prompt and skip dashboard
   if (!user?.id) {
     return (
@@ -238,10 +243,6 @@ function HomeScreen() {
 
   // Remove useServiceRequestsSubscription (unless you want real-time updates, then use refetch)
   // useServiceRequestsSubscription(user?.id, refetch);
-
-  const onRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
 
   // Choose data source
   const effectiveDashboardData: DashboardData = mockMode
