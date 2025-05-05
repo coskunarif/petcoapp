@@ -53,7 +53,13 @@ export default function ServiceCard({ service }: { service: any }) {
           </Animated.View>
         </Animated.View>
       </Pressable>
-      <ServiceDetailModal visible={modalVisible} onDismiss={() => setModalVisible(false)} service={service} />
+      
+      {/* Fixed onDismiss to onClose to match ServiceDetailModal props */}
+      <ServiceDetailModal 
+        visible={modalVisible} 
+        onClose={() => setModalVisible(false)} 
+        service={service} 
+      />
     </>
   );
 }

@@ -1,3 +1,4 @@
+console.log("--- App.js: Top-level execution started ---");
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider as PaperProvider } from 'react-native-paper';

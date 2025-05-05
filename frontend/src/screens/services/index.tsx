@@ -12,7 +12,10 @@ const Tab = createBottomTabNavigator();
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 export default function ServicesScreen() {
+  console.log('[ServicesScreen] Rendering ServicesScreen');
+  
   useEffect(() => {
+    console.log('[ServicesScreen] ServicesScreen mounted');
     logEvent('screen_view', { screen: 'ServicesScreen' });
   }, []);
 
@@ -23,15 +26,33 @@ export default function ServicesScreen() {
           initialRouteName="BrowseServices"
           screenOptions={({ route }) => ({
             tabBarIcon: ({ color, size }) => {
-              let iconName;
-              if (route.name === 'BrowseServices') {
-                iconName = 'magnify'; // Replaced 'paw-search' with a valid icon
-              } else if (route.name === 'MyListings') {
-                iconName = 'format-list-bulleted';
-              } else if (route.name === 'Requests') {
-                iconName = 'swap-horizontal';
+              console.log('[ServicesScreen] Rendering tab icon for route:', route.name);
+              
+              // Default icon name as fallback
+              let iconName = 'circle';
+              
+              try {
+                if (route.name === 'BrowseServices') {
+                  iconName = 'magnify'; // Replaced 'paw-search' with a valid icon
+                } else if (route.name === 'MyListings') {
+                  iconName = 'format-list-bulleted';
+                } else if (route.name === 'Requests') {
+                  iconName = 'swap-horizontal';
+                }
+                
+                // Defensive check to ensure iconName is always a valid string
+                if (!iconName || typeof iconName !== 'string') {
+                  console.warn('[ServicesScreen] Invalid icon name for route:', route.name);
+                  iconName = 'circle'; // Fallback icon
+                }
+                
+                console.log('[ServicesScreen] Using icon:', iconName);
+                return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+              } catch (error) {
+                console.error('[ServicesScreen] Error rendering tab icon:', error);
+                // Return null as a fallback if there's an error
+                return null;
               }
-              return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
             },
           })}
           screenListeners={({ route }) => ({

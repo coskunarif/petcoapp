@@ -18,8 +18,8 @@ module.exports = {
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: "./assets/adaptive-icon.png",
-      backgroundColor: "#FFFFFF"
+      foregroundImage: "./assets/logo.png", // Using the same logo as icon
+      backgroundColor: "#6C63FF" // Using theme primary color
     },
     package: "com.yourcompany.petcoapp"
   },
