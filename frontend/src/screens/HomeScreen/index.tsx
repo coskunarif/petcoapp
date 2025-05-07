@@ -1,34 +1,53 @@
-import React, { useCallback, useState, useEffect } from 'react'; // Import useState, useEffect
-import { supabase } from '../../supabaseClient';
-// Import the other supabase client for comparison
-import { supabase as supabaseLib } from '../../lib/supabase';
-import { SafeAreaView, ScrollView, RefreshControl, StyleSheet, View } from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  StatusBar, 
+  RefreshControl, 
+  ScrollView,
+  Animated, 
+  Platform,
+  ActivityIndicator
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FAB } from 'react-native-paper';
+import { useSelector, useDispatch } from 'react-redux';
+import { supabase } from '../../supabaseClient'; // Import supabase client
+
+// Components
 import CreditBalanceCard from './CreditBalanceCard';
 import UpcomingServicesSection from './UpcomingServicesSection';
 import NearbyProvidersSection from './NearbyProvidersSection';
 import QuickActionsSection from './QuickActionsSection';
 import OfferServiceModal from './OfferServiceModal';
 import RequestServiceModal from './RequestServiceModal';
-import { FAB } from 'react-native-paper';
-import { useHomeDashboardData, useServiceRequestsSubscription } from './hooks';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchHomeDashboard } from './homeSlice';
-import { Text } from 'react-native';
-// Remove incorrect import
-// import { ServiceType } from './OfferServiceModal';
 
-// Define ServiceType interface locally
+// Services & Redux
+import { getCurrentLocation } from '../../services/locationService';
+import { subscribeToServiceRequests, unsubscribe } from '../../services/realtimeService';
+import { 
+  fetchDashboardData, 
+  fetchServiceTypes, 
+  setLocation 
+} from '../../redux/slices/homeSlice';
+import { RootState } from '../../store'; // Make sure we're using the correct RootState
+import { LocationCoords, DEFAULT_LOCATION } from '../../services/locationService';
+import { theme, globalStyles } from '../../theme';
+
+// Define a fallback location to use if Redux state is undefined
+const FALLBACK_LOCATION: LocationCoords = DEFAULT_LOCATION;
+
+// Define ServiceType interface
 interface ServiceType {
   id: string;
   name: string;
 }
 
-// Use real user from Redux
-const useUser = () => useSelector((state: any) => state.auth.user);
-// You may want to use a real location hook here
-const useLocation = () => ({ lat: 37.7749, lng: -122.4194 }); // Replace with real location if available
-
-const mockMode = false; // Toggle this to false to use real data
+// Toggle this to true to use mock data if real data isn't working
+const mockMode = false;
 
 type DashboardData = {
   userCredits: number;
@@ -51,7 +70,7 @@ const mockDashboardData: DashboardData = {
         status: 'pending',
         users: { full_name: 'John Doe', profile_image_url: '' },
         pets: { name: 'Buddy', image_url: '' },
-        service_types: { name: 'Dog Walking', icon: '' },
+        service_types: { name: 'Dog Walking', icon: 'dog' },
       },
     ],
     asRequester: [],
@@ -69,20 +88,26 @@ const mockDashboardData: DashboardData = {
   ],
 };
 
-function HomeScreen() {
+const HomeScreen: React.FC = () => {
+  // Animation values
+  const scrollY = new Animated.Value(0);
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50, 100],
+    outputRange: [0, 0.3, 1],
+    extrapolate: 'clamp',
+  });
+
   // Modal state
-  const [offerModalVisible, setOfferModalVisible] = React.useState(false);
+  const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [requestModalVisible, setRequestModalVisible] = useState(false);
+  
   // State for fetched service types
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [serviceTypesLoading, setServiceTypesLoading] = useState(true);
   const [serviceTypesError, setServiceTypesError] = useState<string | null>(null);
 
-  // TODO: Replace with real user pets if needed
+  // User pets (would come from a real API in production)
   const userPets = [];
-
-  // Remove the hardcoded serviceTypes array
-  // const serviceTypes = [ ... ];
 
   // Fetch service types on mount
   useEffect(() => {
@@ -101,27 +126,14 @@ function HomeScreen() {
         
         let { data, error, status, statusText } = response;
         
-        // If that fails, try with the lib client
+        // If there's an error, just log it - no fallback client needed
         if (error) {
-          console.error('[HomeScreen] Error with main client:', error);
-          console.log('[HomeScreen] Trying with lib supabase client as fallback');
-          
-          const libResponse = await supabaseLib
-            .from('service_types')
-            .select('id, name');
-          
-          data = libResponse.data;
-          error = libResponse.error;
-          status = libResponse.status;
-          statusText = libResponse.statusText;
+          console.error('[HomeScreen] Error with supabase client:', error);
+          // We'll handle the error in the catch block
+          throw error;
         }
 
         console.log('[HomeScreen] Service types response:', { data, error, status, statusText });
-        
-        if (error) {
-          console.error('[HomeScreen] Error fetching service types:', error);
-          throw error;
-        }
         
         if (!data || data.length === 0) {
           console.warn('[HomeScreen] No service types returned from database');
@@ -142,55 +154,67 @@ function HomeScreen() {
     fetchServiceTypes();
   }, []); // Empty dependency array ensures this runs only once on mount
 
-
   // Handler for offering a service - Updated signature
   const handleOfferService = async (service: { service_type_id: string; description: string; cost: string; availability: string }) => {
-    // --- Start of changes ---
-
-    // Find the service type name based on the ID for the title
-    const selectedServiceType = serviceTypes.find(st => st.id === service.service_type_id);
-    const title = selectedServiceType ? selectedServiceType.name : 'Unknown Service'; // Fallback title
-
-    // Remove the lookup logic, ID is now provided directly
-    // const foundType = serviceTypes.find(st => st.name.toLowerCase() === service.type.toLowerCase());
-    // if (!foundType) { ... }
-
-    const serviceListingData = {
-      provider_id: user?.id,
-      service_type_id: service.service_type_id, // Use the ID directly from the argument
-      title: title, // Use the looked-up name for the title
-      description: service.description,
-      location: `POINT(${location.lng} ${location.lat})`, // Format for PostGIS geography
-      availability_schedule: { notes: service.availability }, // Simple JSON structure
-      is_active: true, // Correct column name and type
-      // created_at is handled by default value in DB
-      // cost is omitted as it's not in service_listings
-    };
-
-    console.log('[OfferService] Attempting to insert:', serviceListingData); // Log data before insert
-
     try {
+      console.log('[HomeScreen] handleOfferService called with:', service);
+
+      // Find the service type name based on the ID for the title
+      const selectedServiceType = serviceTypes.find(st => st.id === service.service_type_id);
+      const title = selectedServiceType ? selectedServiceType.name : 'Unknown Service'; // Fallback title
+
+      // Make sure we have a valid location
+      if (!location || (!location.lng && !location.latitude)) {
+        console.error('[OfferService] Missing valid location data');
+        throw new Error('Location data is required for offering a service');
+      }
+      
+      // Use lng/lat or latitude/longitude based on what's available
+      const lng = location.lng || location.longitude;
+      const lat = location.lat || location.latitude;
+      
+      const serviceListingData = {
+        provider_id: user?.id,
+        service_type_id: service.service_type_id, // Use the ID directly from the argument
+        title: title, // Use the looked-up name for the title
+        description: service.description,
+        location: `POINT(${lng} ${lat})`, // Format for PostGIS geography
+        availability_schedule: { notes: service.availability }, // Simple JSON structure
+        is_active: true, // Correct column name and type
+      };
+
+      console.log('[OfferService] Attempting to insert:', serviceListingData);
+
       // Insert into Supabase service_listings table
       const { data, error } = await supabase
-        .from('service_listings') // Correct table name
-        .insert([serviceListingData]); // Use the structured data
+        .from('service_listings')
+        .insert([serviceListingData]);
 
       if (error) {
-        console.error('Supabase insert error:', error); // Log the full error object
-        throw error; // Re-throw to be caught below
+        console.error('[OfferService] Supabase insert error:', error);
+        throw error;
       }
 
       console.log('[OfferService] Successfully inserted:', data);
-      // Optionally: show success feedback or close modal
-      refetch(); // Refetch dashboard data after successful insert
+      
+      // Manually refresh data instead of using refetch (which doesn't exist)
+      if (user?.id && location) {
+        console.log('[OfferService] Refreshing dashboard data after successful submission');
+        dispatch(fetchDashboardData({ 
+          userId: user.id, 
+          location: location as LocationCoords 
+        }));
+      }
     } catch (err: any) {
-      // Log the detailed error
-      console.error('Failed to offer service:', err);
-      // Optionally: show error feedback to the user in the modal
+      console.error('[OfferService] Failed to offer service:', err);
+      
+      // Show error feedback via a local alert or toast notification
+      alert(`Failed to offer service: ${err.message || 'Unknown error'}`);
+      
+      // You may also want to update Redux state to show an error banner
+      // dispatch(setError('Failed to offer service'));
     }
-    // --- End of changes ---
   };
-    // Optionally refetch dashboard data here
 
   // Handler for requesting a service
   const handleRequestService = async (request: {
@@ -199,86 +223,309 @@ function HomeScreen() {
     date: string;
     pet_id?: string;
   }) => {
-    // Replace with Supabase API call
-    await supabase.from('service_requests').insert([{
-      service_type_id: request.service_type_id,
-      description: request.description,
-      preferred_time: request.date,
-      pet_id: request.pet_id,
-      requester_id: user?.id,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    }]);
-    console.log('[RequestService] Submitted:', request);
-    // Optionally refetch dashboard data here
+    try {
+      console.log('[HomeScreen] handleRequestService called with:', request);
+      
+      // Use Supabase API call with correct field names according to schema
+      console.log('[RequestService] Preparing data with correct field names');
+      
+      // Helper function to ensure valid UUIDs only
+      const validateUuid = (id: string | undefined) => {
+        if (!id || id.trim() === '') return null;
+        return id;
+      };
+      
+      // Create the request data with proper validation
+      const insertData = {
+        service_type_id: request.service_type_id,
+        notes: request.description, // Use 'notes' instead of 'description'
+        start_time: request.date, // Use 'start_time' instead of 'preferred_time'
+        end_time: (() => {
+          // Calculate end time as 1 hour after start time
+          const endDate = new Date(request.date);
+          endDate.setHours(endDate.getHours() + 1);
+          return endDate.toISOString();
+        })(),
+        pet_id: validateUuid(request.pet_id), // Validate pet_id to prevent empty UUIDs
+        requester_id: user?.id,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      };
+      
+      console.log('[RequestService] Data to insert:', { ...insertData, requester_id: 'hidden for privacy' });
+      
+      const { data, error } = await supabase.from('service_requests').insert([insertData]);
+      
+      if (error) {
+        console.error('[RequestService] Supabase insert error:', error);
+        throw error;
+      }
+      
+      console.log('[RequestService] Successfully submitted:', data);
+      
+      // Manually refresh data instead of using refetch (which doesn't exist)
+      if (user?.id && location) {
+        console.log('[RequestService] Refreshing dashboard data after successful submission');
+        dispatch(fetchDashboardData({ 
+          userId: user.id, 
+          location: location as LocationCoords 
+        }));
+      }
+    } catch (err: any) {
+      console.error('[RequestService] Failed to request service:', err);
+      
+      // Show error feedback via a local alert or toast notification
+      alert(`Failed to submit service request: ${err.message || 'Unknown error'}`);
+      
+      // You may also want to update Redux state to show an error banner
+      // dispatch(setError('Failed to submit service request'));
+    }
   };
 
-  // Use real user from Redux
-  const user = useUser();
-  const location = useLocation();
-  // Only use TanStack Query for dashboard data
-  const { data: dashboardData, isLoading, error, refetch } = useHomeDashboardData(user?.id, location.lat, location.lng);
+  // Get user, location, and dashboard data from Redux
+  const dispatch = useDispatch();
+  console.log('[HomeScreen] Before selectors');
+  
+  // Add try-catch blocks around each selector to identify which one might be failing
+  let user, location, userCredits, upcomingServices, nearbyProviders, isLoading, error;
+  
+  try {
+    console.log('[HomeScreen] Getting auth.user');
+    user = useSelector((state: RootState) => {
+      console.log('[HomeScreen] auth state:', state.auth);
+      return state.auth.user;
+    });
+    console.log('[HomeScreen] Got user:', user?.id);
+  } catch (err) {
+    console.error('[HomeScreen] Error getting user:', err);
+  }
+  
+  try {
+    console.log('[HomeScreen] Getting home.location');
+    location = useSelector((state: RootState) => {
+      console.log('[HomeScreen] state:', state);
+      console.log('[HomeScreen] home state exists:', !!state.home);
+      
+      // If home slice exists in state, use its location or fallback
+      if (state.home) {
+        return state.home.location || FALLBACK_LOCATION;
+      }
+      
+      // If home slice doesn't exist at all, use fallback location
+      console.warn('[HomeScreen] home slice missing in Redux state, using fallback location');
+      return FALLBACK_LOCATION;
+    });
+    console.log('[HomeScreen] Got location:', location ? JSON.stringify(location) : 'undefined');
+  } catch (err) {
+    console.error('[HomeScreen] Error getting location:', err);
+    // Use fallback location if selector fails
+    location = FALLBACK_LOCATION;
+  }
+  
+  // Create fallback values for all Redux state properties
+  const DEFAULT_UPCOMING_SERVICES = { asProvider: [], asRequester: [] };
+  const DEFAULT_NEARBY_PROVIDERS = [];
+  
+  try {
+    console.log('[HomeScreen] Getting home.userCredits');
+    userCredits = useSelector((state: RootState) => {
+      return state.home?.userCredits || 0;
+    });
+    console.log('[HomeScreen] Got userCredits:', userCredits);
+  } catch (err) {
+    console.error('[HomeScreen] Error getting userCredits:', err);
+    userCredits = 0;
+  }
+  
+  try {
+    console.log('[HomeScreen] Getting home.upcomingServices');
+    upcomingServices = useSelector((state: RootState) => {
+      return state.home?.upcomingServices || DEFAULT_UPCOMING_SERVICES;
+    });
+    console.log('[HomeScreen] Got upcomingServices:', 
+      `Provider: ${upcomingServices.asProvider?.length || 0}, ` +
+      `Requester: ${upcomingServices.asRequester?.length || 0}`);
+  } catch (err) {
+    console.error('[HomeScreen] Error getting upcomingServices:', err);
+    upcomingServices = DEFAULT_UPCOMING_SERVICES;
+  }
+  
+  try {
+    console.log('[HomeScreen] Getting home.nearbyProviders');
+    nearbyProviders = useSelector((state: RootState) => {
+      return state.home?.nearbyProviders || DEFAULT_NEARBY_PROVIDERS;
+    });
+    console.log('[HomeScreen] Got nearbyProviders:', nearbyProviders?.length || 0);
+  } catch (err) {
+    console.error('[HomeScreen] Error getting nearbyProviders:', err);
+    nearbyProviders = DEFAULT_NEARBY_PROVIDERS;
+  }
+  
+  try {
+    console.log('[HomeScreen] Getting home.loading');
+    isLoading = useSelector((state: RootState) => {
+      return state.home?.loading || false;
+    });
+    console.log('[HomeScreen] Got isLoading:', isLoading);
+  } catch (err) {
+    console.error('[HomeScreen] Error getting isLoading:', err);
+    isLoading = false;
+  }
+  
+  try {
+    console.log('[HomeScreen] Getting home.error');
+    error = useSelector((state: RootState) => {
+      return state.home?.error || null;
+    });
+    console.log('[HomeScreen] Got error:', error);
+  } catch (err) {
+    console.error('[HomeScreen] Error getting error state:', err);
+    error = null;
+  }
+  
+  // Integrate with location service for real coordinates
+  useEffect(() => {
+    const initLocation = async () => {
+      try {
+        const coords = await getCurrentLocation();
+        dispatch(setLocation(coords));
+      } catch (err) {
+        console.error('[HomeScreen] Error getting location:', err);
+      }
+    };
+    
+    initLocation();
+  }, [dispatch]);
+  
+  // Fetch dashboard data when component mounts or user/location changes
+  useEffect(() => {
+    if (user?.id && location) {
+      dispatch(fetchDashboardData({ 
+        userId: user.id, 
+        location: location as LocationCoords 
+      }));
+      
+      // Also fetch service types for dropdowns
+      dispatch(fetchServiceTypes());
+    }
+  }, [dispatch, user?.id, location?.latitude, location?.longitude]);
+  
+  // Set up real-time subscription for service updates
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    // Subscribe to service requests (as provider or requester)
+    const channel = subscribeToServiceRequests(user.id, (payload) => {
+      console.log('[HomeScreen] Service request update:', payload);
+      
+      // Refresh dashboard data on changes if location is defined
+      if (location) {
+        dispatch(fetchDashboardData({ 
+          userId: user.id, 
+          location: location as LocationCoords 
+        }));
+      }
+    });
+    
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe(channel);
+    };
+  }, [dispatch, user?.id, location]);
 
   // Define onRefresh callback *before* the early return
   const onRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
+    console.log('[HomeScreen] Pull-to-refresh triggered');
+    if (user?.id && location) {
+      dispatch(fetchDashboardData({ 
+        userId: user.id, 
+        location: location as LocationCoords 
+      }));
+    } else {
+      console.log('[HomeScreen] Cannot refresh: missing user or location', { userId: user?.id, hasLocation: !!location });
+    }
+  }, [dispatch, user?.id, location]);
 
   // Guard: if no user, show prompt and skip dashboard
   if (!user?.id) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        {/* Empty state card for logged-out users */}
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: '#888', fontSize: 18, marginTop: 24 }}>Please log in to see your dashboard.</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#f8f9ff', '#eef1ff']}
+          style={styles.container}
+        >
+          <BlurView intensity={30} style={styles.loginPromptContainer} tint="light">
+            <MaterialCommunityIcons name="account-lock" size={60} color={theme.colors.primary} style={styles.loginIcon} />
+            <Text style={styles.loginPromptTitle}>Welcome to PetCo</Text>
+            <Text style={styles.loginPromptText}>Please log in to see your dashboard</Text>
+          </BlurView>
+        </LinearGradient>
+      </View>
     );
   }
 
-  // Debug logging
-  console.log('[HomeScreen] user:', user, 'location:', location);
-
-  // Remove all Redux fetchHomeDashboard dispatches and useEffect
-
-  // Remove useServiceRequestsSubscription (unless you want real-time updates, then use refetch)
-  // useServiceRequestsSubscription(user?.id, refetch);
+  // Enhanced debug logging - this will help troubleshoot location issues
+  console.log('[HomeScreen] Debug state:', { 
+    userId: user?.id, 
+    hasLocation: !!location,
+    locationData: location ? {
+      lat: location.latitude || location.lat,
+      lng: location.longitude || location.lng
+    } : null
+  });
 
   // Choose data source
   const effectiveDashboardData: DashboardData = mockMode
     ? { ...mockDashboardData, error: mockDashboardData.error ?? '' }
     : {
-        userCredits: dashboardData && typeof dashboardData.userCredits === 'number' ? dashboardData.userCredits : 0,
-        upcomingServices: dashboardData && dashboardData.upcomingServices ? dashboardData.upcomingServices : { asProvider: [], asRequester: [] },
-        nearbyProviders: dashboardData && Array.isArray(dashboardData.nearbyProviders) ? dashboardData.nearbyProviders : [],
-        error: dashboardData && typeof dashboardData.error === 'string'
-          ? dashboardData.error
-          : error
-            ? typeof error === 'string'
-              ? error
-              : (error as any)?.message || ''
-            : '',
+        userCredits,
+        upcomingServices,
+        nearbyProviders,
+        error: error ?? '',
       };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="transparent" 
+        translucent
+      />
+      
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#f8f9ff', '#eef1ff']}
+        style={StyleSheet.absoluteFill}
+      />
+      
+      {/* Fixed Header - appears on scroll */}
+      <Animated.View style={[styles.fixedHeader, { opacity: headerOpacity }]}>
+        <BlurView intensity={80} style={styles.blurHeader} tint="light">
+          <Text style={styles.headerTitle}>Home</Text>
+        </BlurView>
+      </Animated.View>
+      
+      {/* Service Type Debug Views */}
+      {serviceTypesError && (
+        <View style={styles.debugError}>
+          <Text style={styles.debugErrorText}>Service Types Error: {serviceTypesError}</Text>
+        </View>
+      )}
+      
+      {serviceTypesLoading && (
+        <View style={styles.debugLoading}>
+          <Text style={styles.debugLoadingText}>Loading service types...</Text>
+        </View>
+      )}
+
+      {/* Modals */}
       <OfferServiceModal
         visible={offerModalVisible}
         onClose={() => setOfferModalVisible(false)}
         onSubmit={handleOfferService}
-        serviceTypes={serviceTypes} // Pass serviceTypes array to the modal
+        serviceTypes={serviceTypes}
       />
-      {/* Debug info for service types */}
-      {serviceTypesError && (
-        <View style={{ position: 'absolute', top: 40, right: 10, backgroundColor: 'rgba(255,0,0,0.1)', padding: 5, borderRadius: 5, zIndex: 1000 }}>
-          <Text style={{ color: 'red', fontSize: 10 }}>Service Types Error: {serviceTypesError}</Text>
-        </View>
-      )}
-      {serviceTypesLoading && (
-        <View style={{ position: 'absolute', top: 40, right: 10, backgroundColor: 'rgba(0,0,255,0.1)', padding: 5, borderRadius: 5, zIndex: 1000 }}>
-          <Text style={{ color: 'blue', fontSize: 10 }}>Loading service types...</Text>
-        </View>
-      )}
+      
       <RequestServiceModal
         visible={requestModalVisible}
         onClose={() => setRequestModalVisible(false)}
@@ -286,165 +533,235 @@ function HomeScreen() {
         serviceTypes={serviceTypes}
         pets={userPets}
       />
-      {effectiveDashboardData.error && (
-        <View style={{ backgroundColor: '#ffcdd2', padding: 10, margin: 8, borderRadius: 8 }}>
-          <Text style={{ color: '#b71c1c', textAlign: 'center' }}>
-            Error loading dashboard: {effectiveDashboardData.error}
-          </Text>
-        </View>
-      )}
+      
+      {/* Main Content */}
       <ScrollView
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={onRefresh} />}>
-        <CreditBalanceCard balance={effectiveDashboardData.userCredits && effectiveDashboardData.userCredits > 0 ? effectiveDashboardData.userCredits : 10} onPress={() => {}} />
-
-        {/* Divider */}
-        <View style={styles.sectionDivider} />
-
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isLoading} 
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+      >
+        {/* Dashboard Error Message */}
+        {effectiveDashboardData.error && (
+          <View style={styles.errorCard}>
+            <MaterialCommunityIcons name="alert-circle" size={24} color={theme.colors.error} />
+            <Text style={styles.errorText}>
+              Error loading dashboard: {effectiveDashboardData.error}
+            </Text>
+          </View>
+        )}
+        
+        {/* Page Header */}
+        <View style={styles.pageHeader}>
+          <Text style={styles.greeting}>Hello, {user.full_name || 'Pet Lover'}! 👋</Text>
+          <Text style={styles.tagline}>Your pet services dashboard</Text>
+        </View>
+        
+        {/* Credit Balance Card */}
+        <CreditBalanceCard 
+          balance={effectiveDashboardData.userCredits && effectiveDashboardData.userCredits > 0 
+            ? effectiveDashboardData.userCredits 
+            : 10
+          } 
+          onPress={() => {}} 
+        />
+        
         {/* Upcoming Services Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionHeader}>Upcoming Services</Text>
-          {isLoading ? (
-            <View style={styles.skeletonCard}><Text style={styles.skeletonText}>Loading upcoming services...</Text></View>
-          ) : (effectiveDashboardData.upcomingServices?.asProvider?.length === 0 && effectiveDashboardData.upcomingServices?.asRequester?.length === 0) ? (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateIcon}>📅</Text>
-              <Text style={styles.emptyStateText}>No upcoming services.</Text>
-              <Text style={styles.emptyStateSubText}>Tap "Request Service" to find help with pet care.</Text>
-              <Text style={styles.emptyStateTimestamp}>{new Date().toLocaleString()}</Text>
-            </View>
-          ) : (
-            <UpcomingServicesSection services={effectiveDashboardData.upcomingServices} onServicePress={() => {}} />
-          )}
-        </View>
-
-        {/* Divider */}
-        <View style={styles.sectionDivider} />
-
-        {/* Nearby Providers Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionHeader}>Nearby Providers</Text>
-          {isLoading ? (
-            <View style={styles.skeletonCard}><Text style={styles.skeletonText}>Loading providers...</Text></View>
-          ) : effectiveDashboardData.nearbyProviders?.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateIcon}>🐾</Text>
-              <Text style={styles.emptyStateText}>No nearby providers found.</Text>
-              <Text style={styles.emptyStateSubText}>Try pulling to refresh or expand your search radius.</Text>
-              <Text style={styles.emptyStateTimestamp}>{new Date().toLocaleString()}</Text>
-            </View>
-          ) : (
-            <NearbyProvidersSection providers={effectiveDashboardData.nearbyProviders} onProviderPress={() => {}} />
-          )}
-        </View>
-
-        {/* Divider */}
-        <View style={styles.sectionDivider} />
-
+        {isLoading ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading services...</Text>
+          </View>
+        ) : (
+          <UpcomingServicesSection 
+            services={effectiveDashboardData.upcomingServices}
+            onServicePress={() => {}}
+          />
+        )}
+        
         {/* Quick Actions Section */}
         <QuickActionsSection
           onCreateRequestPress={() => setRequestModalVisible(true)}
           onOfferServicePress={() => setOfferModalVisible(true)}
         />
+        
+        {/* Nearby Providers Section */}
+        {isLoading ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading providers...</Text>
+          </View>
+        ) : (
+          <NearbyProvidersSection
+            providers={effectiveDashboardData.nearbyProviders}
+            onProviderPress={() => {}}
+          />
+        )}
+        
+        {/* Bottom padding for FAB */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
-      <FAB style={styles.fab} icon="plus" onPress={() => {}} />
-    </SafeAreaView>
+      
+      {/* Create New FAB */}
+      <FAB
+        style={styles.fab}
+        icon="plus"
+        color="#fff"
+        onPress={() => setRequestModalVisible(true)}
+      />
+    </View>
   );
-}
-export default HomeScreen;
+};
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    // Glassmorphism gradient overlay
-    // Use a gradient background in the parent or wrap with a LinearGradient if available
+    backgroundColor: theme.colors.background,
+  },
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  blurHeader: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(230,230,255,0.3)',
+  },
+  headerTitle: {
+    ...theme.typography.h2,
+    textAlign: 'center',
+  },
+  scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+  },
+  pageHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  greeting: {
+    ...theme.typography.h1,
+    marginBottom: 6,
+  },
+  tagline: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  errorCard: {
+    backgroundColor: 'rgba(253,236,234,0.9)',
+    borderRadius: theme.borderRadius.medium,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: theme.colors.error,
+  },
+  errorText: {
+    color: theme.colors.error,
+    marginLeft: 8,
+    flex: 1,
+    fontWeight: '500',
+  },
+  loadingCard: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: theme.borderRadius.medium,
+    padding: 20,
+    margin: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.elevation.small,
+  },
+  loadingText: {
+    color: theme.colors.textSecondary,
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '500',
   },
   fab: {
     position: 'absolute',
     right: 24,
-    bottom: 40,
-    backgroundColor: '#6C63FF', // modern accent
-    borderRadius: 32,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-    // Add subtle scale animation on press (see FAB usage)
+    bottom: 24,
+    backgroundColor: theme.colors.primary,
+    ...theme.elevation.large,
   },
-  sectionDivider: {
-    height: 24,
-    backgroundColor: 'transparent',
+  debugError: {
+    position: 'absolute',
+    top: 40,
+    right: 10,
+    backgroundColor: 'rgba(255,0,0,0.1)',
+    padding: 5,
+    borderRadius: 5,
+    zIndex: 1000,
   },
-  sectionCard: {
-    backgroundColor: 'rgba(255,255,255,0.8)', // glassy white
-    borderRadius: 22,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    padding: 18,
-    elevation: 6,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 16,
-    // Add backdropFilter: blur(12px) if web, otherwise keep as is
+  debugErrorText: {
+    color: 'red',
+    fontSize: 10,
   },
-  sectionHeader: {
-    fontWeight: '900',
-    fontSize: 22,
-    marginBottom: 12,
-    color: '#23235B',
-    letterSpacing: 0.2,
-    fontFamily: 'System', // Use a clean sans-serif
+  debugLoading: {
+    position: 'absolute',
+    top: 40,
+    right: 10,
+    backgroundColor: 'rgba(0,0,255,0.1)',
+    padding: 5,
+    borderRadius: 5,
+    zIndex: 1000,
   },
-  emptyStateContainer: {
+  debugLoadingText: {
+    color: 'blue',
+    fontSize: 10,
+  },
+  loginPromptContainer: {
+    margin: 40,
+    flex: 1,
+    borderRadius: theme.borderRadius.large,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 24,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: 18,
-    padding: 20,
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.09,
-    shadowRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
-  emptyStateIcon: {
-    fontSize: 40,
-    marginBottom: 10,
-    color: '#6C63FF',
-  },
-  emptyStateText: {
-    color: '#23235B',
-    fontSize: 17,
-    marginBottom: 6,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  emptyStateSubText: {
-    color: '#6C63FF',
-    fontSize: 14,
-    marginBottom: 4,
-    textAlign: 'center',
-    fontWeight: '500',
+  loginIcon: {
+    marginBottom: 20,
     opacity: 0.85,
   },
-  emptyStateTimestamp: {
-    color: '#A0A0B2',
-    fontSize: 12,
-    marginTop: 8,
+  loginPromptTitle: {
+    ...theme.typography.h2,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  skeletonCard: {
-    backgroundColor: 'rgba(220,220,255,0.16)',
-    borderRadius: 18,
-    padding: 22,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  skeletonText: {
-    color: '#A0A0B2',
+  loginPromptText: {
     fontSize: 16,
-    fontWeight: '500',
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: '80%',
+    lineHeight: 24,
+  },
+  bottomPadding: {
+    height: 100,
   },
 });
 
+export default HomeScreen;

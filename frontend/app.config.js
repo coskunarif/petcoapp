@@ -12,16 +12,32 @@ module.exports = {
     backgroundColor: "#ffffff"
   },
   assetBundlePatterns: ["**/*"],
+  scheme: "petcoapp", // URL scheme for deep linking
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.yourcompany.petcoapp"
+    bundleIdentifier: "com.yourcompany.petcoapp",
+    associatedDomains: ["applinks:petcoapp.supabase.co"]
   },
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/logo.png", // Using the same logo as icon
       backgroundColor: "#6C63FF" // Using theme primary color
     },
-    package: "com.yourcompany.petcoapp"
+    package: "com.yourcompany.petcoapp",
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "https",
+            host: "*.petcoapp.supabase.co",
+            pathPrefix: "/"
+          }
+        ],
+        category: ["BROWSABLE", "DEFAULT"]
+      }
+    ]
   },
   extra: {
     // Explicitly expose environment variables to the app

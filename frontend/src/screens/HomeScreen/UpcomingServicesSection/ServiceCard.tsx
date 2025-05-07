@@ -1,80 +1,229 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { theme } from '../../../theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface Props {
   service: any;
   onPress: () => void;
 }
 
-const ServiceCard: React.FC<Props> = ({ service, onPress }) => (
-  <TouchableOpacity style={styles.card} onPress={onPress}>
-    <View style={styles.row}>
-      <Image source={{ uri: service.pets?.image_url }} style={styles.avatar} />
-      <View style={styles.info}>
-        <Text style={styles.name}>{service.pets?.name}</Text>
-        <Text style={styles.time}>{service.start_time}</Text>
-        <Text style={[styles.status, { color: getStatusColor(service.status) }]}>{service.status}</Text>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+const ServiceCard: React.FC<Props> = ({ service, onPress }) => {
+  try {
+    // Format the date for display
+    const formatDate = (dateString: string) => {
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+          weekday: 'short',
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (err) {
+        console.warn(`[ServiceCard] Error formatting date ${dateString}:`, err);
+        return dateString; // Return original if parsing fails
+      }
+    };
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'pending': return '#FFB300';
-    case 'accepted': return '#4CAF50';
-    case 'completed': return '#2196F3';
-    default: return '#757575';
+    // Get the formatted start time
+    const formattedTime = service.start_time ? formatDate(service.start_time) : 'No time specified';
+    
+    // Create a fallback image source if the pet's image is not available
+    const imageSource = service.pets?.image_url 
+      ? { uri: service.pets.image_url } 
+      : require('../../../assets/default-pet.png');
+      
+    // Get the appropriate status icon and color
+    const getStatusInfo = (status: string) => {
+      switch (status?.toLowerCase()) {
+        case 'pending':
+          return { 
+            icon: 'clock-outline', 
+            color: '#FFB300',
+            label: 'Pending'
+          };
+        case 'accepted':
+          return { 
+            icon: 'check-circle-outline', 
+            color: '#4CAF50',
+            label: 'Accepted'
+          };
+        case 'completed':
+          return { 
+            icon: 'check-all', 
+            color: '#2196F3',
+            label: 'Completed'
+          };
+        case 'cancelled':
+          return { 
+            icon: 'close-circle-outline', 
+            color: '#F44336',
+            label: 'Cancelled'
+          };
+        default:
+          return { 
+            icon: 'help-circle-outline', 
+            color: '#757575',
+            label: status || 'Unknown'
+          };
+      }
+    };
+    
+    const statusInfo = getStatusInfo(service.status);
+    
+    return (
+      <Animated.View style={styles.container}>
+        <TouchableOpacity 
+          style={styles.card} 
+          onPress={onPress}
+          activeOpacity={0.95}
+          accessibilityLabel={`Service for ${service.pets?.name || 'pet'}, ${statusInfo.label}`}
+        >
+          <View style={styles.cardContent}>
+            <View style={styles.imageContainer}>
+              <Image 
+                source={imageSource} 
+                style={styles.petImage} 
+                resizeMode="cover"
+              />
+              {service.service_types?.icon && (
+                <View style={styles.serviceIconContainer}>
+                  <MaterialCommunityIcons 
+                    name={service.service_types.icon || "paw"} 
+                    size={16} 
+                    color="#fff" 
+                  />
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.infoContainer}>
+              <Text style={styles.petName} numberOfLines={1}>
+                {service.pets?.name || 'Unnamed Pet'}
+              </Text>
+              
+              <Text style={styles.serviceType} numberOfLines={1}>
+                {service.service_types?.name || 'Pet Service'}
+              </Text>
+              
+              <View style={styles.timeRow}>
+                <MaterialCommunityIcons name="calendar-clock" size={14} color={theme.colors.secondary} />
+                <Text style={styles.timeText}>{formattedTime}</Text>
+              </View>
+              
+              <View style={[styles.statusBadge, { backgroundColor: `${statusInfo.color}15` }]}>
+                <MaterialCommunityIcons name={statusInfo.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color={statusInfo.color} />
+                <Text style={[styles.statusText, { color: statusInfo.color }]}>
+                  {statusInfo.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  } catch (err) {
+    console.error('[ServiceCard] Error rendering service card:', err);
+    return (
+      <View style={styles.errorCard}>
+        <Text style={styles.errorText}>Error displaying service</Text>
+      </View>
+    );
   }
-}
+};
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderRadius: 26,
-    marginVertical: 14,
-    marginHorizontal: 12,
-    paddingVertical: 22,
-    paddingHorizontal: 22,
-    elevation: 10,
-    width: 250,
-    shadowColor: '#1A244066',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.13,
-    shadowRadius: 18,
+  container: {
+    width: 260,
+    marginHorizontal: 8,
+    marginVertical: 8,
+    borderRadius: 24,
+    ...theme.elevation.medium,
   },
-  row: {
+  card: {
+    backgroundColor: theme.colors.surfaceHighlight,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.8)',
+  },
+  cardContent: {
+    padding: 16,
+  },
+  imageContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  petImage: {
+    width: '100%',
+    height: 130,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  serviceIconContainer: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: theme.colors.primary,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  infoContainer: {
+    paddingHorizontal: 4,
+  },
+  petName: {
+    ...theme.typography.h3,
+    marginBottom: 2,
+  },
+  serviceType: {
+    fontSize: 15,
+    color: theme.colors.primary,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 16,
-    backgroundColor: '#E6E6FA',
+  timeText: {
+    marginLeft: 5,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
-  info: {
-    flex: 1,
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
-  name: {
-    fontWeight: '900',
-    fontSize: 18,
-    marginBottom: 2,
-    color: '#23235B',
-  },
-  time: {
-    fontSize: 16,
-    color: '#6C63FF',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  status: {
-    fontSize: 14,
-    marginTop: 6,
-    fontWeight: 'bold',
-    letterSpacing: 0.2,
+  statusText: {
+    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: '700',
     textTransform: 'capitalize',
+  },
+  errorCard: {
+    backgroundColor: 'rgba(255,200,200,0.2)',
+    padding: 16,
+    borderRadius: 16,
+    margin: 16,
+    width: 220,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontWeight: '600',
   },
 });
 

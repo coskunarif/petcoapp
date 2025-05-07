@@ -89,8 +89,18 @@ frontend/npm-debug.log*
 
 ./mcp_config.json
 
+# Ignore PetCoApp directory
+/PetCoApp/
+/claude/
+
+# Ignore session summaries directories
+/session_summaries_backend/
+/session_summaries_frontend/
+
 # ======================
 # DO NOT COMMIT SECRETS
 # ======================
 # Never commit API keys, tokens, credentials, or secrets to source control.
 # If you accidentally commit secrets, rotate them immediately and remove from history.
+
+**/.claude/settings.local.json

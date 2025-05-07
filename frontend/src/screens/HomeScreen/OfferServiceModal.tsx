@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; // Import Picker
+import { 
+  Modal, 
+  View, 
+  Text, 
+  TextInput, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView,
+  ActivityIndicator,
+  Platform
+} from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { theme } from '../../theme';
 
 // Define the structure for a service type
 interface ServiceType {
@@ -11,17 +24,23 @@ interface ServiceType {
 interface OfferServiceModalProps {
   visible: boolean;
   onClose: () => void;
-  // Update onSubmit signature to expect service_type_id
-  onSubmit: (service: { service_type_id: string; description: string; cost: string; availability: string }) => void;
-  serviceTypes: ServiceType[]; // Add prop for service types
+  onSubmit: (service: { 
+    service_type_id: string; 
+    description: string; 
+    cost: string; 
+    availability: string 
+  }) => void;
+  serviceTypes: ServiceType[];
 }
 
 const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose, onSubmit, serviceTypes }) => {
-  // State now holds the selected service_type_id
+  // Form state
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [cost, setCost] = useState('');
   const [availability, setAvailability] = useState('');
+  
+  // UI state
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,87 +64,191 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
     }
   }, [visible, serviceTypes]);
 
+  const validate = () => {
+    // Reset any previous errors
+    setError(null);
+    
+    // Check if all required fields are filled
+    if (!selectedServiceTypeId) {
+      setError('Please select a service type');
+      return false;
+    }
+    
+    if (!description || description.trim() === '') {
+      setError('Please provide a description of your service');
+      return false;
+    }
+    
+    if (!cost || cost.trim() === '') {
+      setError('Please specify the cost of your service');
+      return false;
+    }
+    
+    // Validate cost is a number
+    const costNumber = parseFloat(cost);
+    if (isNaN(costNumber) || costNumber <= 0) {
+      setError('Please enter a valid cost (must be greater than 0)');
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleSubmit = async () => {
-    setError(null);
-    // Check if a service type is selected
-    if (!selectedServiceTypeId || !description || !cost) {
-      setError('Please fill in all required fields.');
+    if (!validate()) {
       return;
     }
+    
     setSubmitting(true);
+    
     try {
-      // Pass the selected ID instead of the name string
-      await onSubmit({ service_type_id: selectedServiceTypeId, description, cost, availability });
-      // Reset state (handled by useEffect now)
-      // setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
-      // setDescription('');
-      // setCost('');
-      setAvailability('');
+      console.log('[OfferServiceModal] Submitting form with:', {
+        service_type_id: selectedServiceTypeId,
+        description,
+        cost,
+        availability
+      });
+      
+      await onSubmit({ 
+        service_type_id: selectedServiceTypeId!, 
+        description, 
+        cost, 
+        availability 
+      });
+      
       onClose();
     } catch (e: any) {
-      setError(e.message || 'An error occurred.');
+      console.error('[OfferServiceModal] Error submitting form:', e);
+      setError(e.message || 'An error occurred while offering the service.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal 
+      visible={visible} 
+      transparent 
+      animationType="fade" 
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
-        <View style={styles.modalCard}>
-          <Text style={styles.header}>Offer a Service</Text>
-          {/* Replace TextInput with Picker */}
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedServiceTypeId}
-              onValueChange={(itemValue) => {
-                console.log('[OfferServiceModal] Selected service type ID:', itemValue);
-                setSelectedServiceTypeId(itemValue);
-              }}
-              style={styles.picker}
-              enabled={!submitting}
-            >
-              {serviceTypes && serviceTypes.length > 0 ? (
-                serviceTypes.map((st) => (
-                  <Picker.Item key={st.id} label={st.name} value={st.id} />
-                ))
-              ) : (
-                <Picker.Item label="No service types available" value={undefined} />
+        <BlurView 
+          style={StyleSheet.absoluteFill} 
+          intensity={40} 
+          tint="dark"
+        />
+        
+        <View style={styles.modalContainer}>
+          <View style={styles.modalCard}>
+            <View style={styles.headerContainer}>
+              <Text style={styles.header}>Offer a Pet Service</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <MaterialCommunityIcons name="close" size={22} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              {/* Service Type Selection */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Service Type</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={selectedServiceTypeId}
+                    onValueChange={(itemValue) => {
+                      console.log('[OfferServiceModal] Selected service type ID:', itemValue);
+                      setSelectedServiceTypeId(itemValue);
+                    }}
+                    style={styles.picker}
+                    enabled={!submitting}
+                    itemStyle={styles.pickerItem}
+                  >
+                    {serviceTypes && serviceTypes.length > 0 ? (
+                      serviceTypes.map((st) => (
+                        <Picker.Item key={st.id} label={st.name} value={st.id} />
+                      ))
+                    ) : (
+                      <Picker.Item label="No service types available" value={undefined} />
+                    )}
+                  </Picker>
+                </View>
+              </View>
+              
+              {/* Description Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Describe the services you provide, your experience, etc."
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  editable={!submitting}
+                  placeholderTextColor={theme.colors.textTertiary}
+                />
+              </View>
+              
+              {/* Cost Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Cost (credits)</Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="0.00"
+                    value={cost}
+                    onChangeText={setCost}
+                    keyboardType="numeric"
+                    editable={!submitting}
+                    placeholderTextColor={theme.colors.textTertiary}
+                  />
+                </View>
+              </View>
+              
+              {/* Availability Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Availability</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Weekdays 9am-5pm, Weekends only, etc."
+                  value={availability}
+                  onChangeText={setAvailability}
+                  editable={!submitting}
+                  placeholderTextColor={theme.colors.textTertiary}
+                />
+              </View>
+              
+              {/* Error Message */}
+              {error && (
+                <View style={styles.errorContainer}>
+                  <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
+                  <Text style={styles.error}>{error}</Text>
+                </View>
               )}
-            </Picker>
-          </View>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Description"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            editable={!submitting}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Cost (credits)"
-            value={cost}
-            onChangeText={setCost}
-            keyboardType="numeric"
-            editable={!submitting}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Availability (e.g. Weekdays 9am-5pm)"
-            value={availability}
-            onChangeText={setAvailability}
-            editable={!submitting}
-          />
-          {error && <Text style={styles.error}>{error}</Text>}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={submitting}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={submitting}>
-              <Text style={styles.submitText}>{submitting ? 'Submitting...' : 'Submit'}</Text>
-            </TouchableOpacity>
+            </ScrollView>
+            
+            {/* Action Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={styles.cancelBtn} 
+                onPress={onClose} 
+                disabled={submitting}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.submitBtn} 
+                onPress={handleSubmit} 
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -136,90 +259,158 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalContainer: {
+    width: '92%',
+    maxWidth: 460,
+    maxHeight: '90%',
+    borderRadius: theme.borderRadius.large,
+    overflow: 'hidden',
+    ...theme.elevation.large,
+  },
   modalCard: {
-    width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: theme.borderRadius.large,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   header: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#1976d2',
-    textAlign: 'center',
+    ...theme.typography.h2,
+    color: theme.colors.primary,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    padding: 24,
+  },
+  fieldContainer: {
+    marginBottom: 20,
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: theme.colors.text,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e0e7ef',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14, // Slightly more horizontal padding
-    marginBottom: 12,
+    borderColor: 'rgba(0,0,0,0.08)',
+    borderRadius: theme.borderRadius.small,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f7f8fa',
-    color: '#333', // Ensure text color is visible
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    color: theme.colors.text,
   },
   textArea: {
-    height: 80, // Increase height for description
-    textAlignVertical: 'top', // Align text to top for multiline
+    height: 120,
+    textAlignVertical: 'top',
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#e0e7ef',
-    borderRadius: 10,
-    marginBottom: 12,
-    backgroundColor: '#f7f8fa',
-    justifyContent: 'center',
-    height: 75 // Standard height for picker container
-    // overflow: 'hidden', // Add overflow hidden
+    borderColor: 'rgba(0,0,0,0.08)',
+    borderRadius: theme.borderRadius.small,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginBottom: 8,
+    overflow: 'hidden',
   },
   picker: {
-     // Basic styling, adjust as needed
-     width: '100%',
-     height: '100%',
-     color: '#333',
+    width: '100%',
+    height: Platform.OS === 'ios' ? 200 : 50,
+    color: theme.colors.text,
+  },
+  pickerItem: {
+    fontSize: 16,
+  },
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    borderRadius: theme.borderRadius.small,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    paddingHorizontal: 16,
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginRight: 4,
+  },
+  priceInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: theme.colors.text,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(211,47,47,0.08)',
+    borderRadius: theme.borderRadius.small,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  error: {
+    color: theme.colors.error,
+    marginLeft: 8,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
-    gap: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    padding: 16,
+    gap: 12,
   },
   cancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    backgroundColor: '#eee',
-    borderRadius: 8,
-    marginRight: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.02)',
   },
   cancelText: {
-    color: '#888',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
+    fontSize: 16,
   },
   submitBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    backgroundColor: '#1976d2',
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
+    minWidth: 100,
+    alignItems: 'center',
+    ...theme.elevation.small,
   },
   submitText: {
     color: '#fff',
     fontWeight: '700',
-  },
-  error: {
-    color: '#d32f2f',
-    marginBottom: 8,
-    textAlign: 'center',
+    fontSize: 16,
   },
 });
 

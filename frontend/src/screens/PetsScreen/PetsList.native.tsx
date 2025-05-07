@@ -1,19 +1,24 @@
 import React from 'react';
-import { FlatList, View, StyleSheet } from 'react-native';
+import { FlatList, View, StyleSheet, RefreshControl, Platform } from 'react-native';
 import { useDispatch } from 'react-redux';
 import PetCard from '../../components/PetCard.native';
-import { Pet, setEditingPet, deletePetAsync } from '../../store/petsSlice';
+import { Pet, setEditingPet, deletePetAsync, fetchPetsAsync } from '../../store/petsSlice';
+import { theme } from '../../theme';
+import ConfirmationModal from '../../components/ConfirmationModal.native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 interface PetsListProps {
   pets: Pet[];
+  scrollEventListener?: (event: any) => void;
 }
 
-import ConfirmationModal from '../../components/ConfirmationModal.native';
-
-const PetsList: React.FC<PetsListProps> = ({ pets }) => {
+const PetsList: React.FC<PetsListProps> = ({ pets, scrollEventListener }) => {
   const dispatch = useDispatch();
   const [confirmVisible, setConfirmVisible] = React.useState(false);
   const [petToDelete, setPetToDelete] = React.useState<Pet | null>(null);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   const handleEdit = (pet: Pet) => {
     dispatch(setEditingPet(pet));
@@ -37,6 +42,16 @@ const PetsList: React.FC<PetsListProps> = ({ pets }) => {
     setPetToDelete(null);
   };
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    if (userId) {
+      dispatch(fetchPetsAsync(userId) as any)
+        .finally(() => setRefreshing(false));
+    } else {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <>
       <FlatList
@@ -46,6 +61,16 @@ const PetsList: React.FC<PetsListProps> = ({ pets }) => {
           <PetCard pet={item} onEdit={handleEdit} onDelete={handleDelete} />
         )}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollEventListener}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
       />
       <ConfirmationModal
         visible={confirmVisible}
@@ -63,7 +88,9 @@ const PetsList: React.FC<PetsListProps> = ({ pets }) => {
 
 const styles = StyleSheet.create({
   list: {
-    paddingBottom: 80,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50, // Reduced space after header
+    paddingBottom: 100, // Space for FAB
+    paddingHorizontal: theme.spacing.md,
   },
 });
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
-import PetListScreen from '../screens/pets/PetListScreen';
+import PetsScreen from '../screens/PetsScreen';
 import ServicesScreen from '../screens/services';
 import MessagesScreen from '../screens/messages/MessagesScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
@@ -58,7 +58,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Pets" 
-        component={PetListScreen}
+        component={PetsScreen}
       />
       <Tab.Screen 
         name="Services" 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RouteProp, useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import {
@@ -12,14 +13,45 @@ import BasicInfoSection from '../../components/BasicInfoSection';
 import CareInstructionsSection from '../../components/CareInstructionsSection';
 import PhotoGallerySection from '../../components/PhotoGallerySection';
 
-const PetDetailModal: React.FC = () => {
+interface PetDetailParams {
+  pet: {
+    id: string;
+    name: string;
+    species: string;
+    owner_id: string;
+    care?: Record<string, any>;
+    photo?: string;
+    photos?: string[];
+  };
+}
+
+const PetDetailModal: React.FC<{
+  route: RouteProp<{ params: PetDetailParams }>
+}> = ({ route }) => {
+  const navigation = useNavigation();
   const dispatch = useDispatch();
   const { editingPet, uploadProgress } = useSelector((state: RootState) => state.pets);
-  const [form, setForm] = useState(editingPet);
+  const [form, setForm] = useState<{
+    id?: string;
+    name: string;
+    species: string;
+    owner_id?: string;
+    care?: Record<string, any>;
+    photo?: string;
+    photos?: string[];
+  }>(route?.params?.pet || editingPet || {
+    name: '',
+    species: '',
+    care: {},
+    photos: []
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!form) return null;
+  if (!form) {
+    navigation.goBack();
+    return null;
+  }
 
   const handleChange = (field: string, value: any) => {
     setForm((prev: any) => ({ ...prev, [field]: value }));
@@ -47,8 +79,8 @@ const PetDetailModal: React.FC = () => {
   };
 
   const validate = () => {
-    if (!form.name || !form.species) {
-      setError('Name and species are required');
+    if (!form.name || !form.species || !form.owner_id) {
+      setError('Name, species, and owner ID are required');
       return false;
     }
     return true;
@@ -64,12 +96,18 @@ const PetDetailModal: React.FC = () => {
     try {
       if (!form.id) {
         // Add new pet
-        await dispatch(addPetAsync(form) as any).unwrap();
+        if (!form.owner_id) {
+          throw new Error('Owner ID is required');
+        }
+        await dispatch(addPetAsync({ ...form, owner_id: form.owner_id }) as any).unwrap();
       } else {
         // Update existing pet
         await dispatch(updatePetAsync({ petId: form.id, updates: form }) as any).unwrap();
       }
       dispatch(setEditingPet(null));
+      if (navigation) {
+        navigation.goBack();
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to save pet');
     } finally {
@@ -79,6 +117,9 @@ const PetDetailModal: React.FC = () => {
 
   const handleCancel = () => {
     dispatch(setEditingPet(null));
+    if (navigation) {
+      navigation.goBack();
+    }
   };
 
   return (

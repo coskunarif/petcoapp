@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -8,79 +8,44 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   Platform,
-  ActivityIndicator,
-  ScrollView,
   KeyboardAvoidingView,
   SafeAreaView,
   StatusBar
 } from 'react-native';
-import { 
-  TextInput, 
-  IconButton
-} from 'react-native-paper';
+import { TextInput, IconButton } from 'react-native-paper';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useDispatch } from 'react-redux';
-import { loginWithEmail, loginWithSocial } from '../../redux/slices/authSlice';
+import { resetPasswordRequest } from '../../redux/slices/authSlice';
 import { theme, globalStyles } from '../../theme';
 import { AppButton, AppCard, Text } from '../../components/ui';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { height, width } = Dimensions.get('window');
 const isSmallDevice = height < 700;
 
-export default function LoginScreen({ navigation }) {
+export default function ForgotPasswordScreen({ navigation }: any) {
   const dispatch = useDispatch();
   const [formError, setFormError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  
-  // Add CSS to fix autofill background color on web
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      // Insert style to override autofill background
-      const style = document.createElement('style');
-      style.innerHTML = `
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus,
-        input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 30px white inset !important;
-          -webkit-text-fill-color: #333333 !important;
-          transition: background-color 5000s ease-in-out 0s;
-        }
-      `;
-      document.head.appendChild(style);
-      
-      return () => {
-        // Clean up
-        document.head.removeChild(style);
-      };
-    }
-  }, []);
-  
-  const loginSchema = Yup.object().shape({
+
+  const resetSchema = Yup.object().shape({
     email: Yup.string().email('Invalid email').required('Required'),
-    password: Yup.string().min(6, 'Too short').required('Required'),
   });
 
-  const handleLogin = async (values, { setSubmitting }) => {
+  const handleResetPassword = async (values: { email: string }, { setSubmitting }: any) => {
     setFormError('');
+    setSuccessMessage('');
+    
     try {
-      await dispatch(loginWithEmail({ email: values.email, password: values.password })).unwrap();
-    } catch (error) {
-      setFormError(error);
+      await dispatch(resetPasswordRequest(values.email)).unwrap();
+      setSuccessMessage(`Password reset instructions sent to ${values.email}. Please check your inbox.`);
+    } catch (error: any) {
+      setFormError(error || 'Failed to send reset instructions. Please try again.');
     } finally {
       setSubmitting(false);
-    }
-  };
-  
-  const handleSocialLogin = async (provider) => {
-    setFormError('');
-    try {
-      await dispatch(loginWithSocial(provider)).unwrap();
-    } catch (error) {
-      setFormError(error);
     }
   };
 
@@ -105,16 +70,18 @@ export default function LoginScreen({ navigation }) {
                 <Text variant="body" color="rgba(255,255,255,0.9)" style={styles.tagline}>Your community of pet lovers</Text>
               </View>
               
-              {/* Login form card */}
+              {/* Reset Password form card */}
               <View style={styles.cardWrapper}>
                 <AppCard style={styles.card} elevation="large">
                   <View style={styles.cardContent}>
-                    <Text variant="h2" align="center" style={[styles.title, { marginBottom: isSmallDevice ? 24 : 32 }]}>Welcome back</Text>
+                    <Text variant="h2" align="center" style={[styles.title, { marginBottom: isSmallDevice ? 24 : 32 }]}>
+                      Reset Password
+                    </Text>
                     
                     <Formik
-                      initialValues={{ email: '', password: '' }}
-                      validationSchema={loginSchema}
-                      onSubmit={handleLogin}
+                      initialValues={{ email: '' }}
+                      validationSchema={resetSchema}
+                      onSubmit={handleResetPassword}
                     >
                       {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
                         <>
@@ -149,41 +116,6 @@ export default function LoginScreen({ navigation }) {
                             <Text variant="caption" color="error" style={styles.error}>{errors.email}</Text>
                           )}
                           
-                          <TextInput
-                            label="Password"
-                            mode="outlined"
-                            secureTextEntry={!showPassword}
-                            value={values.password}
-                            onChangeText={handleChange('password')}
-                            onFocus={() => setPasswordFocused(true)}
-                            onBlur={(e) => {
-                              handleBlur('password')(e);
-                              setPasswordFocused(false);
-                            }}
-                            error={touched.password && !!errors.password}
-                            style={styles.textInput}
-                            outlineColor="rgba(230, 230, 230, 0.9)"
-                            activeOutlineColor={theme.colors.primary}
-                            theme={{ 
-                              colors: { 
-                                text: theme.colors.text, 
-                                placeholder: theme.colors.textSecondary,
-                                background: theme.colors.surfaceHighlight,
-                                primary: theme.colors.primary
-                              } 
-                            }}
-                            left={<TextInput.Icon icon="lock-outline" color={passwordFocused ? theme.colors.primary : theme.colors.textTertiary} />}
-                            right={<TextInput.Icon icon={showPassword ? "eye-off" : "eye"} color={theme.colors.textTertiary} onPress={() => setShowPassword(!showPassword)} />}
-                            autoComplete="password"
-                          />
-                          {touched.password && errors.password && (
-                            <Text variant="caption" color="error" style={styles.error}>{errors.password}</Text>
-                          )}
-                          
-                          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPasswordLink}>
-                            <Text variant="body" color="primary" weight="medium">Forgot password?</Text>
-                          </TouchableOpacity>
-                          
                           {formError ? (
                             <View style={styles.errorContainer}>
                               <IconButton icon="alert-circle" size={18} iconColor={theme.colors.error} style={{ margin: 0 }} />
@@ -191,27 +123,20 @@ export default function LoginScreen({ navigation }) {
                             </View>
                           ) : null}
                           
+                          {successMessage ? (
+                            <View style={styles.successContainer}>
+                              <IconButton icon="check-circle" size={18} iconColor={theme.colors.success} style={{ margin: 0 }} />
+                              <Text variant="body" color="success" style={styles.successText}>{successMessage}</Text>
+                            </View>
+                          ) : null}
+                          
                           <AppButton
-                            title="Sign In"
+                            title="Send Reset Instructions"
                             onPress={handleSubmit}
                             loading={isSubmitting}
                             disabled={isSubmitting}
                             fullWidth
-                            style={styles.loginButton}
-                          />
-                          
-                          <View style={styles.dividerContainer}>
-                            <View style={styles.divider} />
-                            <Text variant="caption" color="textTertiary" style={styles.dividerText}>or</Text>
-                            <View style={styles.divider} />
-                          </View>
-                          
-                          <AppButton
-                            title="Sign Up"
-                            onPress={() => navigation.navigate('Signup')}
-                            mode="outlined"
-                            fullWidth
-                            style={styles.signupButton}
+                            style={styles.resetButton}
                           />
                         </>
                       )}
@@ -219,6 +144,19 @@ export default function LoginScreen({ navigation }) {
                   </View>
                 </AppCard>
               </View>
+              
+              {/* Bottom padding above back to login link */}
+              <View style={{height: 10}} />
+              
+              {/* Back to login link */}
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Login')} 
+                style={styles.loginLinkContainer}
+              >
+                <Text variant="body" color="white">
+                  Back to <Text variant="body" weight="bold" color="white" style={styles.loginLinkHighlight}>Login</Text>
+                </Text>
+              </TouchableOpacity>
               
               {/* Bottom padding to ensure content doesn't get cut off */}
               <View style={styles.bottomSpacer} />
@@ -333,13 +271,6 @@ const styles = StyleSheet.create({
     marginTop: -8,
     // Color handled by Text component
   },
-  forgotPasswordLink: {
-    alignSelf: 'flex-end',
-    marginTop: 6,
-    marginBottom: 20,
-    paddingVertical: 6, // Larger touch target
-    paddingHorizontal: 8,
-  },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -355,48 +286,27 @@ const styles = StyleSheet.create({
     flex: 1,
     // Color handled by Text component
   },
-  loginButton: {
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    backgroundColor: 'rgba(232, 245, 233, 0.8)',
+    padding: 14,
+    borderRadius: theme.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
+  },
+  successText: {
+    marginLeft: 8,
+    flex: 1,
+    // Color handled by Text component
+  },
+  resetButton: {
     marginVertical: 12,
     marginTop: 16,
     // Other styles are handled by AppButton component
   },
-  signupButton: {
-    marginVertical: 8,
-    borderColor: theme.colors.primary,
-    // Other styles are handled by AppButton component
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: isSmallDevice ? 12 : 16,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    // Color is handled by Text component
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: isSmallDevice ? 10 : 14,
-  },
-  socialButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: theme.colors.surfaceHighlight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 14,
-    ...theme.elevation.small,
-    // Add subtle animation
-    transform: [{ scale: 1.0 }],
-  },
-  signupLinkContainer: {
+  loginLinkContainer: {
     alignItems: 'center',
     paddingVertical: 16,
     paddingBottom: Platform.OS === 'android' ? 16 : 12,
@@ -404,17 +314,11 @@ const styles = StyleSheet.create({
     // Add touch target
     paddingHorizontal: 20,
   },
-  signupLinkHighlight: {
+  loginLinkHighlight: {
     textDecorationLine: 'underline',
     // Color is handled by Text component
   },
   bottomSpacer: {
     height: Platform.OS === 'android' ? 220 : 150,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.primary,
-    paddingTop: Platform.OS === 'android' ? 0 : undefined,
-    paddingBottom: Platform.OS === 'android' ? 24 : 16,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,13 +6,20 @@ import {
   Modal, 
   TouchableOpacity, 
   ScrollView,
-  Image
+  Image,
+  Animated,
+  Dimensions,
+  Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
 import { AppButton, StatusBadge } from '../../components/ui';
 import { supabase } from '../../supabaseClient';
 import { useSelector } from 'react-redux';
+
+const { height } = Dimensions.get('window');
 
 interface ServiceDetailModalProps {
   visible: boolean;
@@ -27,6 +34,50 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 }) => {
   const [requesting, setRequesting] = useState(false);
   const user = useSelector((state: any) => state.auth.user);
+  
+  // Animation values
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (visible) {
+      // Reset animation values when modal becomes visible
+      slideAnim.setValue(height);
+      opacityAnim.setValue(0);
+      
+      // Start animations
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+  
+  const handleClose = () => {
+    // Animate out
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: height,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
   
   const handleRequestService = async () => {
     try {
@@ -48,7 +99,7 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
       if (error) throw error;
       
       // Navigate to request detail or show success message
-      onClose();
+      handleClose();
       // Here you could navigate to the request detail
     } catch (error) {
       console.error('Error requesting service:', error);
@@ -59,133 +110,224 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
   
   const handleMessageProvider = () => {
     // Implement navigation to chat with provider
-    onClose();
+    handleClose();
     // Here you would navigate to the chat screen
   };
+
+  if (!visible) return null;
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
       transparent={true}
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <MaterialCommunityIcons name="close" size={24} color={theme.colors.textTertiary} />
-          </TouchableOpacity>
-          
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Service Header */}
-            <View style={styles.serviceHeader}>
-              <View style={styles.serviceTypeContainer}>
-                <MaterialCommunityIcons 
-                  name={service?.service_types?.icon || "paw"} 
-                  size={18} 
-                  color={theme.colors.primary} 
-                />
-                <Text style={styles.serviceType}>{service?.service_types?.name}</Text>
-                <StatusBadge status="active" size="small" style={styles.statusBadge} />
-              </View>
-              
-              <Text style={styles.serviceTitle}>{service?.title}</Text>
-            </View>
+      <Animated.View 
+        style={[
+          styles.modalOverlay,
+          { opacity: opacityAnim }
+        ]}
+      >
+        <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+        
+        <Animated.View 
+          style={[
+            styles.modalContainer,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          <LinearGradient
+            colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.97)']}
+            style={styles.modalGradient}
+          >
+            {/* Drag handle */}
+            <View style={styles.dragHandle} />
             
-            {/* Provider Info */}
-            <View style={styles.providerCard}>
-              <View style={styles.providerImageContainer}>
-                {service?.users?.profile_image_url ? (
-                  <Image 
-                    source={{ uri: service?.users?.profile_image_url }} 
-                    style={styles.providerImage} 
-                  />
-                ) : (
-                  <View style={styles.providerImagePlaceholder}>
-                    <Text style={styles.providerInitial}>
-                      {service?.users?.full_name?.charAt(0) || 'P'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.providerInfo}>
-                <Text style={styles.providerName}>{service?.users?.full_name || 'Provider'}</Text>
-                <View style={styles.ratingContainer}>
-                  <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
-                  <Text style={styles.ratingText}>4.8</Text>
-                  <Text style={styles.reviewCount}>(24 reviews)</Text>
+            {/* Close button */}
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <BlurView intensity={30} tint="light" style={styles.closeButtonBlur}>
+                <MaterialCommunityIcons name="close" size={22} color={theme.colors.text} />
+              </BlurView>
+            </TouchableOpacity>
+            
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Service Header */}
+              <View style={styles.serviceHeader}>
+                <View style={styles.serviceTypeContainer}>
+                  <LinearGradient
+                    colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                    style={styles.iconBackground}
+                  >
+                    <MaterialCommunityIcons 
+                      name={service?.service_types?.icon || "paw"} 
+                      size={20} 
+                      color={theme.colors.primary} 
+                    />
+                  </LinearGradient>
+                  <Text style={styles.serviceType}>{service?.service_types?.name}</Text>
+                  <StatusBadge status="active" size="small" style={styles.statusBadge} />
                 </View>
-              </View>
-            </View>
-            
-            {/* Description */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About this service</Text>
-              <Text style={styles.descriptionText}>{service?.description}</Text>
-            </View>
-            
-            {/* Details */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Details</Text>
-              
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons 
-                  name="calendar-range" 
-                  size={20} 
-                  color={theme.colors.primary} 
-                  style={styles.detailIcon} 
-                />
-                <Text style={styles.detailText}>
-                  Available: {service?.availability_schedule?.notes || 'Flexible'}
-                </Text>
+                
+                <Text style={styles.serviceTitle}>{service?.title || 'Untitled Service'}</Text>
               </View>
               
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons 
-                  name="map-marker" 
-                  size={20} 
-                  color={theme.colors.primary} 
-                  style={styles.detailIcon} 
-                />
-                <Text style={styles.detailText}>
-                  Location: Within 5 miles
-                </Text>
+              {/* Provider Info */}
+              <BlurView intensity={15} tint="light" style={styles.providerCard}>
+                <View style={styles.providerImageContainer}>
+                  {service?.users?.profile_image_url ? (
+                    <Image 
+                      source={{ uri: service?.users?.profile_image_url }} 
+                      style={styles.providerImage} 
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.3)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.providerImagePlaceholder}
+                    >
+                      <Text style={styles.providerInitial}>
+                        {service?.users?.full_name?.charAt(0) || 'P'}
+                      </Text>
+                    </LinearGradient>
+                  )}
+                </View>
+                
+                <View style={styles.providerInfo}>
+                  <Text style={styles.providerName}>{service?.users?.full_name || 'Provider'}</Text>
+                  <View style={styles.ratingContainer}>
+                    <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
+                    <Text style={styles.ratingText}>4.8</Text>
+                    <Text style={styles.reviewCount}>(24 reviews)</Text>
+                    <TouchableOpacity style={styles.viewProfileButton}>
+                      <Text style={styles.viewProfileText}>View Profile</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </BlurView>
+              
+              {/* Description */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>About this service</Text>
+                <Text style={styles.descriptionText}>{service?.description || 'No description provided.'}</Text>
               </View>
               
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons 
-                  name="currency-usd" 
-                  size={20} 
-                  color={theme.colors.primary} 
-                  style={styles.detailIcon} 
-                />
-                <Text style={styles.detailText}>
-                  Credits: 30 per session
-                </Text>
+              {/* Details */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Details</Text>
+                
+                <BlurView intensity={15} tint="light" style={styles.detailsCard}>
+                  <View style={styles.detailRow}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.detailIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name="calendar-range" 
+                        size={18} 
+                        color={theme.colors.primary} 
+                      />
+                    </LinearGradient>
+                    <View style={styles.detailTextContainer}>
+                      <Text style={styles.detailLabel}>Availability</Text>
+                      <Text style={styles.detailText}>
+                        {service?.availability_schedule?.notes || 'Flexible schedule'}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.detailDivider} />
+                  
+                  <View style={styles.detailRow}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.detailIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name="map-marker" 
+                        size={18} 
+                        color={theme.colors.primary} 
+                      />
+                    </LinearGradient>
+                    <View style={styles.detailTextContainer}>
+                      <Text style={styles.detailLabel}>Location</Text>
+                      <Text style={styles.detailText}>
+                        Within 5 miles of your location
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.detailDivider} />
+                  
+                  <View style={styles.detailRow}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.detailIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name="currency-usd" 
+                        size={18} 
+                        color={theme.colors.primary} 
+                      />
+                    </LinearGradient>
+                    <View style={styles.detailTextContainer}>
+                      <Text style={styles.detailLabel}>Price</Text>
+                      <Text style={styles.detailText}>
+                        30 credits per session
+                      </Text>
+                    </View>
+                  </View>
+                </BlurView>
               </View>
-            </View>
-            
-            {/* Actions */}
-            <View style={styles.actionButtons}>
-              <AppButton
-                title="Request Service"
-                onPress={handleRequestService}
-                loading={requesting}
-                style={styles.requestButton}
-              />
               
-              <AppButton
-                title="Message Provider"
-                mode="outline"
-                onPress={handleMessageProvider}
-                icon={<MaterialCommunityIcons name="chat" size={16} color={theme.colors.primary} />}
-                style={styles.messageButton}
-              />
-            </View>
-          </ScrollView>
-        </View>
-      </View>
+              {/* Actions */}
+              <View style={styles.actionButtons}>
+                <LinearGradient
+                  colors={[theme.colors.primary, theme.colors.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.requestGradient}
+                >
+                  <TouchableOpacity
+                    style={styles.requestButton}
+                    onPress={handleRequestService}
+                    disabled={requesting}
+                  >
+                    {requesting ? (
+                      <Text style={styles.buttonText}>Requesting...</Text>
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons 
+                          name="check-circle-outline" 
+                          size={18} 
+                          color="#FFFFFF" 
+                          style={styles.buttonIcon}
+                        />
+                        <Text style={styles.buttonText}>Request Service</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </LinearGradient>
+                
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={handleMessageProvider}
+                >
+                  <MaterialCommunityIcons 
+                    name="chat-outline" 
+                    size={18} 
+                    color={theme.colors.primary} 
+                    style={styles.buttonIcon}
+                  />
+                  <Text style={styles.messageButtonText}>Message Provider</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -193,29 +335,50 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 40,
+    backgroundColor: 'transparent',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     maxHeight: '90%',
+    overflow: 'hidden',
+  },
+  modalGradient: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20, // Extra padding for iOS devices with home indicator
+  },
+  dragHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 16,
   },
   closeButton: {
     position: 'absolute',
-    right: 24,
-    top: 24,
+    right: 20,
+    top: 20,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  closeButtonBlur: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    paddingTop: 10,
   },
   serviceHeader: {
     marginBottom: 24,
@@ -223,112 +386,193 @@ const styles = StyleSheet.create({
   serviceTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  iconBackground: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    ...theme.elevation.small,
   },
   serviceType: {
     color: theme.colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 6,
+    fontWeight: '700',
+    fontSize: 15,
+    marginRight: 10,
   },
   statusBadge: {
-    marginLeft: 8,
+    marginLeft: 4,
   },
   serviceTitle: {
-    fontSize: theme.typography.h1.fontSize,
-    fontWeight: theme.typography.h1.fontWeight,
-    color: theme.typography.h1.color,
+    fontSize: 28,
+    fontWeight: '900',
+    color: theme.colors.text,
     marginBottom: 8,
+    letterSpacing: 0.2,
   },
   providerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.medium,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   providerImageContainer: {
     marginRight: 16,
   },
   providerImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   providerImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.primaryLight,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   providerInitial: {
-    color: theme.colors.primary,
-    fontSize: 24,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
   },
   providerInfo: {
     flex: 1,
   },
   providerName: {
-    fontSize: theme.typography.h3.fontSize,
-    fontWeight: theme.typography.h3.fontWeight,
-    color: theme.typography.h3.color,
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.colors.text,
+    marginBottom: 6,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   ratingText: {
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.text,
     marginLeft: 4,
+    marginRight: 4,
   },
   reviewCount: {
     fontSize: 14,
-    color: theme.colors.textTertiary,
-    marginLeft: 4,
+    color: theme.colors.textSecondary,
+    marginRight: 8,
+  },
+  viewProfileButton: {
+    marginTop: 6,
+  },
+  viewProfileText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+    fontSize: 14,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: theme.typography.h3.fontSize,
-    fontWeight: theme.typography.h3.fontWeight,
-    color: theme.typography.h3.color,
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.text,
     marginBottom: 12,
   },
   descriptionText: {
-    fontSize: theme.typography.body.fontSize,
-    fontWeight: theme.typography.body.fontWeight,
-    color: theme.typography.body.color,
+    fontSize: 16,
+    color: theme.colors.textSecondary,
     lineHeight: 24,
+    letterSpacing: 0.2,
+  },
+  detailsCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 16,
   },
-  detailIcon: {
-    marginRight: 12,
+  detailIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  detailTextContainer: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
   },
   detailText: {
-    fontSize: theme.typography.body.fontSize,
-    fontWeight: theme.typography.body.fontWeight,
-    color: theme.typography.body.color,
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    marginHorizontal: 16,
   },
   actionButtons: {
-    marginVertical: 8,
+    marginTop: 10,
+    marginBottom: Platform.OS === 'ios' ? 20 : 10,
+  },
+  requestGradient: {
+    borderRadius: 16,
+    marginBottom: 12,
+    ...theme.elevation.medium,
   },
   requestButton: {
-    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
   },
   messageButton: {
-    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primaryLight,
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  messageButtonText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
 
