@@ -8,28 +8,60 @@ import {
   ScrollView,
   Animated,
   Dimensions,
-  Platform
+  Platform,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
 import { StatusBadge } from '../../components/ui';
+import { useSelector, useDispatch } from 'react-redux';
+import { setSelectedRequest } from '../../redux/slices/serviceSlice';
+import type { ServiceRequest } from '../../types/services'; 
+import { servicesService } from '../../services/servicesService';
+import { RootState } from '../../redux/store';
+import { format } from 'date-fns';
 
 const { height } = Dimensions.get('window');
 
 interface RequestDetailModalProps {
   visible: boolean;
   onDismiss: () => void;
-  request: any;
+  requestId?: string;
 }
 
-export default function RequestDetailModal({ visible, onDismiss, request }: RequestDetailModalProps) {
+export default function RequestDetailModal({ visible, onDismiss, requestId }: RequestDetailModalProps) {
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const dispatch = useDispatch();
   
-  const [selectedStatus, setSelectedStatus] = useState(request?.status || 'pending');
+  // Get the request from the Redux store with safe selectors
+  const request = useSelector((state: RootState) => {
+    const id = state.services?.selectedRequestId;
+    return id ? state.services?.requests?.find(request => request.id === id) : null;
+  });
+  const currentUserId = useSelector((state: RootState) => state.auth?.user?.id);
+  
+  const [selectedStatus, setSelectedStatus] = useState<ServiceRequest['status']>('pending');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  
+  // Set the request ID when it changes
+  useEffect(() => {
+    if (requestId) {
+      dispatch(setSelectedRequest(requestId));
+    }
+  }, [requestId, dispatch]);
+  
+  // Update selected status when request changes
+  useEffect(() => {
+    if (request) {
+      setSelectedStatus(request.status);
+    }
+  }, [request]);
   
   useEffect(() => {
     if (visible) {
@@ -54,6 +86,9 @@ export default function RequestDetailModal({ visible, onDismiss, request }: Requ
   }, [visible]);
   
   const handleClose = () => {
+    // Reset error state
+    setUpdateError(null);
+    
     // Animate out
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -68,13 +103,39 @@ export default function RequestDetailModal({ visible, onDismiss, request }: Requ
       }),
     ]).start(() => {
       onDismiss();
+      // Clear selected request after modal is closed
+      setTimeout(() => dispatch(setSelectedRequest(null)), 300);
     });
   };
   
-  const handleUpdateStatus = () => {
-    // Handle status update logic here
-    // For now, just close the modal
-    handleClose();
+  const handleUpdateStatus = async () => {
+    if (!request || !request.id) return;
+    
+    // Don't update if the status hasn't changed
+    if (selectedStatus === request.status) {
+      handleClose();
+      return;
+    }
+    
+    setIsUpdating(true);
+    setUpdateError(null);
+    
+    try {
+      const { data, error } = await servicesService.updateRequest(request.id, selectedStatus);
+      
+      if (error) {
+        setUpdateError(typeof error === 'string' ? error : 'Failed to update request status');
+        console.error('[RequestDetailModal] Error updating request status:', error);
+      } else {
+        // Success! Close the modal
+        handleClose();
+      }
+    } catch (err) {
+      console.error('[RequestDetailModal] Exception updating request status:', err);
+      setUpdateError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsUpdating(false);
+    }
   };
   
   const getStatusColor = (status: string) => {
@@ -84,6 +145,7 @@ export default function RequestDetailModal({ visible, onDismiss, request }: Requ
       case 'pending':
         return '#ed6c02'; // Warning orange
       case 'cancelled':
+      case 'rejected':
         return '#d32f2f'; // Error red
       case 'accepted':
         return '#0288d1'; // Info blue
@@ -97,9 +159,36 @@ export default function RequestDetailModal({ visible, onDismiss, request }: Requ
       case 'completed': return 'Completed';
       case 'pending': return 'Pending';
       case 'cancelled': return 'Cancelled';
+      case 'rejected': return 'Rejected';
       case 'accepted': return 'Accepted';
       default: return 'Unknown';
     }
+  };
+  
+  // Determine if user is requester or provider
+  const isRequester = request?.requester_id === currentUserId;
+  const isProvider = request?.provider_id === currentUserId;
+  
+  // Determine available status options based on current status and user role
+  const getAvailableStatusOptions = (): ServiceRequest['status'][] => {
+    if (!request) return [];
+    
+    switch(request.status) {
+      case 'pending':
+        if (isProvider) return ['accepted', 'rejected'];
+        if (isRequester) return ['cancelled'];
+        break;
+      case 'accepted':
+        if (isProvider) return ['completed', 'cancelled'];
+        if (isRequester) return ['cancelled'];
+        break;
+      case 'completed':
+      case 'cancelled':
+      case 'rejected':
+        return []; // No changes allowed for completed, cancelled or rejected requests
+    }
+    
+    return [];
   };
   
   if (!visible) return null;
@@ -139,222 +228,283 @@ export default function RequestDetailModal({ visible, onDismiss, request }: Requ
               </BlurView>
             </TouchableOpacity>
             
-            <ScrollView 
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-            >
-              {/* Header with request type and id */}
-              <View style={styles.requestHeader}>
-                <View style={styles.requestTypeContainer}>
-                  <LinearGradient
-                    colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
-                    style={styles.iconBackground}
-                  >
-                    <MaterialCommunityIcons 
-                      name={request?.icon || "swap-horizontal"} 
-                      size={20} 
-                      color={theme.colors.primary} 
-                    />
-                  </LinearGradient>
-                  <Text style={styles.requestType}>
-                    {request?.type || 'Service'} Request
-                  </Text>
-                </View>
-                
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: `${getStatusColor(request?.status || 'pending')}20` }
-                ]}>
-                  <View style={[
-                    styles.statusDot,
-                    { backgroundColor: getStatusColor(request?.status || 'pending') }
-                  ]} />
-                  <Text style={[
-                    styles.statusText,
-                    { color: getStatusColor(request?.status || 'pending') }
-                  ]}>
-                    {getStatusLabel(request?.status || 'pending')}
-                  </Text>
-                </View>
+            {!request ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Loading request details...</Text>
               </View>
-              
-              <Text style={styles.requestTitle}>
-                {request?.title || 'Service Request'}
-              </Text>
-              
-              {/* Request details */}
-              <BlurView intensity={15} tint="light" style={styles.detailsCard}>
-                <View style={styles.detailRow}>
-                  <LinearGradient
-                    colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
-                    style={styles.detailIconContainer}
-                  >
-                    <MaterialCommunityIcons 
-                      name="account" 
-                      size={18} 
-                      color={theme.colors.primary} 
-                    />
-                  </LinearGradient>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Requester</Text>
-                    <Text style={styles.detailText}>
-                      {request?.requester || 'Unknown Requester'}
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={styles.detailDivider} />
-                
-                <View style={styles.detailRow}>
-                  <LinearGradient
-                    colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
-                    style={styles.detailIconContainer}
-                  >
-                    <MaterialCommunityIcons 
-                      name="account-tie" 
-                      size={18} 
-                      color={theme.colors.primary} 
-                    />
-                  </LinearGradient>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Provider</Text>
-                    <Text style={styles.detailText}>
-                      {request?.provider || 'Unknown Provider'}
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={styles.detailDivider} />
-                
-                <View style={styles.detailRow}>
-                  <LinearGradient
-                    colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
-                    style={styles.detailIconContainer}
-                  >
-                    <MaterialCommunityIcons 
-                      name="calendar" 
-                      size={18} 
-                      color={theme.colors.primary} 
-                    />
-                  </LinearGradient>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Date Requested</Text>
-                    <Text style={styles.detailText}>
-                      {request?.date || 'Not specified'}
-                    </Text>
-                  </View>
-                </View>
-                
-                {request?.notes && (
-                  <>
-                    <View style={styles.detailDivider} />
-                    
-                    <View style={styles.detailRow}>
-                      <LinearGradient
-                        colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
-                        style={styles.detailIconContainer}
-                      >
-                        <MaterialCommunityIcons 
-                          name="text-box-outline" 
-                          size={18} 
-                          color={theme.colors.primary} 
-                        />
-                      </LinearGradient>
-                      <View style={styles.detailTextContainer}>
-                        <Text style={styles.detailLabel}>Notes</Text>
-                        <Text style={styles.detailText}>
-                          {request?.notes}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-              </BlurView>
-              
-              {/* Status selector - if request is pending */}
-              {request?.status === 'pending' && (
-                <View style={styles.statusSection}>
-                  <Text style={styles.sectionTitle}>Update Status</Text>
-                  
-                  <View style={styles.statusOptions}>
-                    {['accepted', 'completed', 'cancelled'].map((status) => (
-                      <TouchableOpacity
-                        key={status}
-                        style={[
-                          styles.statusOption,
-                          selectedStatus === status && {
-                            borderColor: getStatusColor(status),
-                            backgroundColor: `${getStatusColor(status)}10`,
-                          }
-                        ]}
-                        onPress={() => setSelectedStatus(status)}
-                      >
-                        <View 
-                          style={[
-                            styles.statusCheckCircle, 
-                            selectedStatus === status && {
-                              borderColor: getStatusColor(status),
-                              backgroundColor: getStatusColor(status),
-                            }
-                          ]}
-                        >
-                          {selectedStatus === status && (
-                            <MaterialCommunityIcons 
-                              name="check" 
-                              size={14} 
-                              color="#FFFFFF" 
-                            />
-                          )}
-                        </View>
-                        <Text 
-                          style={[
-                            styles.statusOptionText,
-                            selectedStatus === status && {
-                              color: getStatusColor(status),
-                              fontWeight: '700',
-                            }
-                          ]}
-                        >
-                          {getStatusLabel(status)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-              
-              {/* Actions */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={styles.closeActionButton}
-                  onPress={handleClose}
-                >
-                  <Text style={styles.closeActionText}>Close</Text>
-                </TouchableOpacity>
-                
-                {request?.status === 'pending' && (
-                  <LinearGradient
-                    colors={[theme.colors.primary, theme.colors.primaryDark]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.updateGradient}
-                  >
-                    <TouchableOpacity
-                      style={styles.updateButton}
-                      onPress={handleUpdateStatus}
+            ) : (
+              <ScrollView 
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+              >
+                {/* Header with request type and id */}
+                <View style={styles.requestHeader}>
+                  <View style={styles.requestTypeContainer}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.iconBackground}
                     >
                       <MaterialCommunityIcons 
-                        name="check-circle-outline" 
-                        size={18} 
-                        color="#FFFFFF" 
-                        style={styles.buttonIcon}
+                        name={request.service_type?.icon || "swap-horizontal"} 
+                        size={20} 
+                        color={theme.colors.primary} 
                       />
-                      <Text style={styles.buttonText}>Update Status</Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
+                    </LinearGradient>
+                    <Text style={styles.requestType}>
+                      {request.service_type?.name || 'Service'} Request
+                    </Text>
+                  </View>
+                  
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: `${getStatusColor(request.status)}20` }
+                  ]}>
+                    <View style={[
+                      styles.statusDot,
+                      { backgroundColor: getStatusColor(request.status) }
+                    ]} />
+                    <Text style={[
+                      styles.statusText,
+                      { color: getStatusColor(request.status) }
+                    ]}>
+                      {getStatusLabel(request.status)}
+                    </Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.requestTitle}>
+                  {request.title || request.service_listing?.title || 'Service Request'}
+                </Text>
+                
+                {/* Request details */}
+                <BlurView intensity={15} tint="light" style={styles.detailsCard}>
+                  <View style={styles.detailRow}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.detailIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name="account" 
+                        size={18} 
+                        color={theme.colors.primary} 
+                      />
+                    </LinearGradient>
+                    <View style={styles.detailTextContainer}>
+                      <Text style={styles.detailLabel}>Requester</Text>
+                      <Text style={styles.detailText}>
+                        {request.requester?.full_name || 'Unknown Requester'}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.detailDivider} />
+                  
+                  <View style={styles.detailRow}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.detailIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name="account-tie" 
+                        size={18} 
+                        color={theme.colors.primary} 
+                      />
+                    </LinearGradient>
+                    <View style={styles.detailTextContainer}>
+                      <Text style={styles.detailLabel}>Provider</Text>
+                      <Text style={styles.detailText}>
+                        {request.provider?.full_name || 'Unknown Provider'}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.detailDivider} />
+                  
+                  <View style={styles.detailRow}>
+                    <LinearGradient
+                      colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                      style={styles.detailIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name="calendar" 
+                        size={18} 
+                        color={theme.colors.primary} 
+                      />
+                    </LinearGradient>
+                    <View style={styles.detailTextContainer}>
+                      <Text style={styles.detailLabel}>Date Requested</Text>
+                      <Text style={styles.detailText}>
+                        {request.created_at 
+                          ? format(new Date(request.created_at), 'PPP') 
+                          : 'Not specified'
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {request.scheduled_date && (
+                    <>
+                      <View style={styles.detailDivider} />
+                      
+                      <View style={styles.detailRow}>
+                        <LinearGradient
+                          colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                          style={styles.detailIconContainer}
+                        >
+                          <MaterialCommunityIcons 
+                            name="calendar-clock" 
+                            size={18} 
+                            color={theme.colors.primary} 
+                          />
+                        </LinearGradient>
+                        <View style={styles.detailTextContainer}>
+                          <Text style={styles.detailLabel}>Scheduled Date</Text>
+                          <Text style={styles.detailText}>
+                            {format(new Date(request.scheduled_date), 'PPP')}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                  
+                  {request.notes && (
+                    <>
+                      <View style={styles.detailDivider} />
+                      
+                      <View style={styles.detailRow}>
+                        <LinearGradient
+                          colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.1)']}
+                          style={styles.detailIconContainer}
+                        >
+                          <MaterialCommunityIcons 
+                            name="text-box-outline" 
+                            size={18} 
+                            color={theme.colors.primary} 
+                          />
+                        </LinearGradient>
+                        <View style={styles.detailTextContainer}>
+                          <Text style={styles.detailLabel}>Notes</Text>
+                          <Text style={styles.detailText}>
+                            {request.notes}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </BlurView>
+                
+                {/* Status selector - only show if user can update status */}
+                {getAvailableStatusOptions().length > 0 && (
+                  <View style={styles.statusSection}>
+                    <Text style={styles.sectionTitle}>Update Status</Text>
+                    
+                    <View style={styles.statusOptions}>
+                      {getAvailableStatusOptions().map((status) => (
+                        <TouchableOpacity
+                          key={status}
+                          style={[
+                            styles.statusOption,
+                            selectedStatus === status && {
+                              borderColor: getStatusColor(status),
+                              backgroundColor: `${getStatusColor(status)}10`,
+                            }
+                          ]}
+                          onPress={() => setSelectedStatus(status)}
+                        >
+                          <View 
+                            style={[
+                              styles.statusCheckCircle, 
+                              selectedStatus === status && {
+                                borderColor: getStatusColor(status),
+                                backgroundColor: getStatusColor(status),
+                              }
+                            ]}
+                          >
+                            {selectedStatus === status && (
+                              <MaterialCommunityIcons 
+                                name="check" 
+                                size={14} 
+                                color="#FFFFFF" 
+                              />
+                            )}
+                          </View>
+                          <Text 
+                            style={[
+                              styles.statusOptionText,
+                              selectedStatus === status && {
+                                color: getStatusColor(status),
+                                fontWeight: '700',
+                              }
+                            ]}
+                          >
+                            {getStatusLabel(status)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    
+                    {/* Error message */}
+                    {updateError && (
+                      <View style={styles.errorContainer}>
+                        <MaterialCommunityIcons 
+                          name="alert-circle" 
+                          size={16} 
+                          color="#d32f2f" 
+                        />
+                        <Text style={styles.errorText}>{updateError}</Text>
+                      </View>
+                    )}
+                  </View>
                 )}
-              </View>
-            </ScrollView>
+                
+                {/* Actions */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.closeActionButton}
+                    onPress={handleClose}
+                    disabled={isUpdating}
+                  >
+                    <Text style={[
+                      styles.closeActionText,
+                      isUpdating && { opacity: 0.6 }
+                    ]}>Close</Text>
+                  </TouchableOpacity>
+                  
+                  {getAvailableStatusOptions().length > 0 && (
+                    <LinearGradient
+                      colors={[theme.colors.primary, theme.colors.primaryDark]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[
+                        styles.updateGradient,
+                        isUpdating && { opacity: 0.7 }
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.updateButton}
+                        onPress={handleUpdateStatus}
+                        disabled={isUpdating || selectedStatus === request.status}
+                      >
+                        {isUpdating ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons 
+                              name="check-circle-outline" 
+                              size={18} 
+                              color="#FFFFFF" 
+                              style={styles.buttonIcon}
+                            />
+                            <Text style={styles.buttonText}>Update Status</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  )}
+                </View>
+              </ScrollView>
+            )}
           </LinearGradient>
         </Animated.View>
       </Animated.View>
@@ -404,6 +554,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  loadingContainer: {
+    padding: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -534,6 +695,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: theme.colors.text,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: 'rgba(211, 47, 47, 0.1)',
+    borderRadius: 12,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
   },
   actionButtons: {
     flexDirection: 'row',

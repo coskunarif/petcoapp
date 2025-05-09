@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { theme } from '../../../theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+// Import fallback avatar URL to avoid require() errors
+import defaultAvatarUrl from '../../../../assets/default-avatar';
 
 interface Props {
   provider: any;
@@ -13,7 +15,7 @@ const ProviderCard: React.FC<Props> = ({ provider, onPress }) => {
     // Create a fallback image source if the provider's profile image is not available
     const imageSource = provider.profile_image_url 
       ? { uri: provider.profile_image_url } 
-      : require('../../../assets/default-avatar.png');
+      : { uri: defaultAvatarUrl };
       
     // Format services for display
     const servicesList = provider.serviceTypes?.slice(0, 3)?.join(' • ') || 'No services listed';

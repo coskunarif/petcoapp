@@ -135,7 +135,6 @@ export default function ServicesScreen() {
             <Tab.Screen 
               name="BrowseServices" 
               children={(props) => <BrowseServicesTab {...props} onScroll={handleScroll} />}
-              listeners={{ focus: () => logEvent('tab_view', { tab: 'BrowseServices' }) }}
               options={{ 
                 title: 'Browse', 
                 tabBarAccessibilityLabel: 'Browse Services Tab', 
@@ -145,7 +144,6 @@ export default function ServicesScreen() {
             <Tab.Screen 
               name="MyListings" 
               children={(props) => <MyListingsTab {...props} onScroll={handleScroll} />}
-              listeners={{ focus: () => logEvent('tab_view', { tab: 'MyListings' }) }}
               options={{ 
                 title: 'My Listings', 
                 tabBarAccessibilityLabel: 'My Listings Tab', 
@@ -155,7 +153,6 @@ export default function ServicesScreen() {
             <Tab.Screen 
               name="Requests" 
               children={(props) => <RequestsTab {...props} onScroll={handleScroll} />}
-              listeners={{ focus: () => logEvent('tab_view', { tab: 'Requests' }) }}
               options={{ 
                 title: 'Requests', 
                 tabBarAccessibilityLabel: 'Requests Tab', 

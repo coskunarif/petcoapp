@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { theme } from '../../../theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+// Import fallback pet image URL to avoid require() errors
+import defaultPetUrl from '../../../../assets/default-pet';
 
 interface Props {
   service: any;
@@ -33,7 +35,7 @@ const ServiceCard: React.FC<Props> = ({ service, onPress }) => {
     // Create a fallback image source if the pet's image is not available
     const imageSource = service.pets?.image_url 
       ? { uri: service.pets.image_url } 
-      : require('../../../assets/default-pet.png');
+      : { uri: defaultPetUrl };
       
     // Get the appropriate status icon and color
     const getStatusInfo = (status: string) => {

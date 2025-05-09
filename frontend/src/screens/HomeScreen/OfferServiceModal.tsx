@@ -6,13 +6,12 @@ import {
   TextInput, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView,
   ActivityIndicator,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { theme } from '../../theme';
 
 // Define the structure for a service type
@@ -44,18 +43,11 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug logging for serviceTypes
-  useEffect(() => {
-    console.log('[OfferServiceModal] serviceTypes:', serviceTypes);
-    console.log('[OfferServiceModal] serviceTypes length:', serviceTypes?.length);
-  }, [serviceTypes]);
-
   // Reset state when modal becomes visible
   useEffect(() => {
     if (visible) {
       // Set default selected type if serviceTypes is not empty
       setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
-      console.log('[OfferServiceModal] Setting selectedServiceTypeId:', serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
       setDescription('');
       setCost('');
       setAvailability('');
@@ -126,42 +118,32 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
   };
 
   return (
-    <Modal 
-      visible={visible} 
-      transparent 
-      animationType="fade" 
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <BlurView 
-          style={StyleSheet.absoluteFill} 
-          intensity={40} 
-          tint="dark"
-        />
-        
         <View style={styles.modalContainer}>
-          <View style={styles.modalCard}>
-            <View style={styles.headerContainer}>
-              <Text style={styles.header}>Offer a Pet Service</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <MaterialCommunityIcons name="close" size={22} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Text style={styles.headerText}>Offer a Pet Service</Text>
+            <TouchableOpacity onPress={onClose}>
+              <MaterialCommunityIcons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.scrollView}>
+            <View style={styles.content}>
               {/* Service Type Selection */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Service Type</Text>
+                <Text style={styles.label}>Service Type</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={selectedServiceTypeId}
-                    onValueChange={(itemValue) => {
-                      console.log('[OfferServiceModal] Selected service type ID:', itemValue);
-                      setSelectedServiceTypeId(itemValue);
-                    }}
+                    onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
                     style={styles.picker}
                     enabled={!submitting}
-                    itemStyle={styles.pickerItem}
                   >
                     {serviceTypes && serviceTypes.length > 0 ? (
                       serviceTypes.map((st) => (
@@ -176,7 +158,7 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
               
               {/* Description Field */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Description</Text>
+                <Text style={styles.label}>Description</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   placeholder="Describe the services you provide, your experience, etc."
@@ -184,13 +166,13 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
                   onChangeText={setDescription}
                   multiline
                   editable={!submitting}
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor="#999"
                 />
               </View>
               
               {/* Cost Field */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Cost (credits)</Text>
+                <Text style={styles.label}>Cost (credits)</Text>
                 <View style={styles.priceInputContainer}>
                   <Text style={styles.currencySymbol}>$</Text>
                   <TextInput
@@ -200,55 +182,55 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
                     onChangeText={setCost}
                     keyboardType="numeric"
                     editable={!submitting}
-                    placeholderTextColor={theme.colors.textTertiary}
+                    placeholderTextColor="#999"
                   />
                 </View>
               </View>
               
               {/* Availability Field */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Availability</Text>
+                <Text style={styles.label}>Availability</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Weekdays 9am-5pm, Weekends only, etc."
                   value={availability}
                   onChangeText={setAvailability}
                   editable={!submitting}
-                  placeholderTextColor={theme.colors.textTertiary}
+                  placeholderTextColor="#999"
                 />
               </View>
               
               {/* Error Message */}
               {error && (
                 <View style={styles.errorContainer}>
-                  <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
-                  <Text style={styles.error}>{error}</Text>
+                  <MaterialCommunityIcons name="alert-circle" size={20} color="red" />
+                  <Text style={styles.errorText}>{error}</Text>
                 </View>
               )}
-            </ScrollView>
-            
-            {/* Action Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity 
-                style={styles.cancelBtn} 
-                onPress={onClose} 
-                disabled={submitting}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.submitBtn} 
-                onPress={handleSubmit} 
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.submitText}>Submit</Text>
-                )}
-              </TouchableOpacity>
             </View>
+          </ScrollView>
+          
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={onClose} 
+              disabled={submitting}
+            >
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.submitButton]} 
+              onPress={handleSubmit} 
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Create Service</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -259,158 +241,134 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   modalContainer: {
-    width: '92%',
-    maxWidth: 460,
-    maxHeight: '90%',
-    borderRadius: theme.borderRadius.large,
+    backgroundColor: 'white',
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: 10,
     overflow: 'hidden',
-    ...theme.elevation.large,
+    maxHeight: '80%',
   },
-  modalCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: theme.borderRadius.large,
-    overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  headerContainer: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  header: {
-    ...theme.typography.h2,
+  headerText: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: theme.colors.primary,
   },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  scrollView: {
+    maxHeight: 400,
   },
-  scrollContent: {
-    padding: 24,
+  content: {
+    padding: 20,
   },
   fieldContainer: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
-  fieldLabel: {
+  label: {
     fontSize: 16,
-    fontWeight: '600',
     marginBottom: 8,
-    color: theme.colors.text,
+    color: '#333',
+    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    borderRadius: theme.borderRadius.small,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
     fontSize: 16,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    color: theme.colors.text,
+    backgroundColor: '#fff',
   },
   textArea: {
-    height: 120,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    borderRadius: theme.borderRadius.small,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    marginBottom: 8,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    backgroundColor: '#fff',
     overflow: 'hidden',
   },
   picker: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 200 : 50,
-    color: theme.colors.text,
-  },
-  pickerItem: {
-    fontSize: 16,
+    height: Platform.OS === 'ios' ? 150 : 50,
   },
   priceInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    borderRadius: theme.borderRadius.small,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    paddingHorizontal: 16,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
   },
   currencySymbol: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
+    color: '#666',
     marginRight: 4,
   },
   priceInput: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     fontSize: 16,
-    color: theme.colors.text,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(211,47,47,0.08)',
-    borderRadius: theme.borderRadius.small,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 16,
+    backgroundColor: 'rgba(255, 0, 0, 0.08)',
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 10,
   },
-  error: {
-    color: theme.colors.error,
+  errorText: {
+    color: 'red',
     marginLeft: 8,
     flex: 1,
     fontSize: 14,
-    fontWeight: '500',
   },
-  buttonRow: {
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    borderTopWidth: 0.5,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-    padding: 16,
-    gap: 12,
+    padding: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    gap: 10,
   },
-  cancelBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: theme.borderRadius.medium,
+  button: {
+    padding: 12,
+    borderRadius: 5,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: 'rgba(0,0,0,0.02)',
-  },
-  cancelText: {
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  submitBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.medium,
+    borderColor: '#ddd',
     minWidth: 100,
     alignItems: 'center',
-    ...theme.elevation.small,
   },
-  submitText: {
-    color: '#fff',
-    fontWeight: '700',
+  buttonText: {
+    color: '#666',
     fontSize: 16,
+    fontWeight: '500',
+  },
+  submitButton: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    minWidth: 140,
+  },
+  submitButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

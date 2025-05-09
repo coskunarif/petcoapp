@@ -1,56 +1,92 @@
-import React from 'react';
-import { FlatList, View, StyleSheet, RefreshControl, Platform } from 'react-native';
-import { useDispatch } from 'react-redux';
+import React, { useState, useCallback } from 'react';
+import { FlatList, View, StyleSheet, RefreshControl, Platform, Alert } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import PetCard from '../../components/PetCard.native';
 import { Pet, setEditingPet, deletePetAsync, fetchPetsAsync } from '../../store/petsSlice';
 import { theme } from '../../theme';
 import ConfirmationModal from '../../components/ConfirmationModal.native';
-import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 
 interface PetsListProps {
   pets: Pet[];
   scrollEventListener?: (event: any) => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
-const PetsList: React.FC<PetsListProps> = ({ pets, scrollEventListener }) => {
+const PetsList: React.FC<PetsListProps> = ({ 
+  pets, 
+  scrollEventListener, 
+  onRefresh: externalRefresh,
+  refreshing: externalRefreshing 
+}) => {
   const dispatch = useDispatch();
-  const [confirmVisible, setConfirmVisible] = React.useState(false);
-  const [petToDelete, setPetToDelete] = React.useState<Pet | null>(null);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [petToDelete, setPetToDelete] = useState<Pet | null>(null);
+  const [internalRefreshing, setInternalRefreshing] = useState(false);
+  
   const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const loading = useSelector((state: RootState) => state.pets.loading);
 
-  const handleEdit = (pet: Pet) => {
+  // Use either external or internal refresh state
+  const refreshing = externalRefreshing !== undefined ? externalRefreshing : internalRefreshing;
+
+  const handleEdit = useCallback((pet: Pet) => {
+    console.log('[PetsList] Editing pet:', pet.id);
     dispatch(setEditingPet(pet));
-  };
+  }, [dispatch]);
 
-  const handleDelete = (pet: Pet) => {
+  const handleDelete = useCallback((pet: Pet) => {
+    console.log('[PetsList] Preparing to delete pet:', pet.id);
     setPetToDelete(pet);
     setConfirmVisible(true);
-  };
+  }, []);
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = useCallback(() => {
     if (petToDelete) {
-      dispatch(deletePetAsync(petToDelete.id) as any);
+      console.log('[PetsList] Confirming deletion of pet:', petToDelete.id);
+      dispatch(deletePetAsync(petToDelete.id) as any)
+        .unwrap()
+        .then(() => {
+          console.log('[PetsList] Pet deleted successfully');
+        })
+        .catch((err: any) => {
+          console.error('[PetsList] Error deleting pet:', err);
+          Alert.alert('Error', `Failed to delete pet: ${err.message || err}`);
+        });
     }
     setConfirmVisible(false);
     setPetToDelete(null);
-  };
+  }, [dispatch, petToDelete]);
 
-  const handleCancelDelete = () => {
+  const handleCancelDelete = useCallback(() => {
+    console.log('[PetsList] Cancelling pet deletion');
     setConfirmVisible(false);
     setPetToDelete(null);
-  };
+  }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    if (userId) {
-      dispatch(fetchPetsAsync(userId) as any)
-        .finally(() => setRefreshing(false));
-    } else {
-      setRefreshing(false);
+  const handleRefresh = useCallback(() => {
+    if (!userId) {
+      console.warn('[PetsList] Cannot refresh: No user ID');
+      return;
     }
-  };
+    
+    // Use external refresh handler if provided
+    if (externalRefresh) {
+      console.log('[PetsList] Using external refresh handler');
+      externalRefresh();
+      return;
+    }
+    
+    // Otherwise use internal refresh logic
+    console.log('[PetsList] Refreshing pets list');
+    setInternalRefreshing(true);
+    
+    dispatch(fetchPetsAsync(userId) as any)
+      .finally(() => {
+        setInternalRefreshing(false);
+      });
+  }, [userId, dispatch, externalRefresh]);
 
   return (
     <>
@@ -58,17 +94,26 @@ const PetsList: React.FC<PetsListProps> = ({ pets, scrollEventListener }) => {
         data={pets}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <PetCard pet={item} onEdit={handleEdit} onDelete={handleDelete} />
+          <PetCard 
+            pet={item} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete} 
+          />
         )}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          // Add extra padding if list is empty to center content better
+          pets.length === 0 && styles.emptyList
+        ]}
         showsVerticalScrollIndicator={false}
         onScroll={scrollEventListener}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
+            onRefresh={handleRefresh}
             colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
       />
@@ -92,6 +137,11 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // Space for FAB
     paddingHorizontal: theme.spacing.md,
   },
+  emptyList: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default PetsList;

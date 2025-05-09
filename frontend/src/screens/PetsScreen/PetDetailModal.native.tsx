@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Animated, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -16,10 +16,96 @@ import BasicInfoSection from '../../components/BasicInfoSection.native';
 import CareInstructionsSection from '../../components/CareInstructionsSection.native';
 import PhotoGallerySection from '../../components/PhotoGallerySection.native';
 
+// Helper function to convert care object to care_instructions string
+const careObjectToString = (careObj: any) => {
+  if (!careObj) return '';
+  
+  const parts = [];
+  if (careObj.feeding) parts.push(`Feeding: ${careObj.feeding}`);
+  if (careObj.medication) parts.push(`Medication: ${careObj.medication}`);
+  if (careObj.exercise) parts.push(`Exercise: ${careObj.exercise}`);
+  if (careObj.special) parts.push(`Special Instructions: ${careObj.special}`);
+  
+  return parts.join('. ');
+};
+
+// Helper function to parse care_instructions string to care object
+const stringToCareObject = (instructionsStr: string) => {
+  if (!instructionsStr) return {};
+  
+  const careObj: any = {};
+  
+  // Extract feeding information
+  const feedingMatch = instructionsStr.match(/Feeding:\s*(.*?)(?:\.|\n|$)/i);
+  if (feedingMatch && feedingMatch[1]) careObj.feeding = feedingMatch[1].trim();
+  
+  // Extract medication information
+  const medicationMatch = instructionsStr.match(/Medication:\s*(.*?)(?:\.|\n|$)/i);
+  if (medicationMatch && medicationMatch[1]) careObj.medication = medicationMatch[1].trim();
+  
+  // Extract exercise information
+  const exerciseMatch = instructionsStr.match(/Exercise:\s*(.*?)(?:\.|\n|$)/i);
+  if (exerciseMatch && exerciseMatch[1]) careObj.exercise = exerciseMatch[1].trim();
+  
+  // Extract special instructions
+  const specialMatch = instructionsStr.match(/Special Instructions:\s*(.*?)(?:\.|\n|$)/i);
+  if (specialMatch && specialMatch[1]) careObj.special = specialMatch[1].trim();
+  
+  return careObj;
+};
+
 const PetDetailModal: React.FC = () => {
   const dispatch = useDispatch();
   const { editingPet, uploadProgress } = useSelector((state: RootState) => state.pets);
-  const [form, setForm] = useState(editingPet);
+  // Initialize form with editingPet data and convert care_instructions to care object
+  const initialForm = useMemo(() => {
+    console.log('[PetDetailModal] Initializing form with editingPet:', JSON.stringify(editingPet));
+    
+    if (!editingPet) return null;
+    
+    // Create initial form with all pet properties
+    const initialData = { ...editingPet };
+    
+    // Check for both plural and singular forms of care_instructions
+    // (database schema shows care_instructions but error suggests care_instruction might exist)
+    const careInstructions = initialData.care_instructions || initialData.care_instruction || '';
+    
+    // If we have care instructions, parse it into a care object for the UI
+    if (careInstructions) {
+      console.log('[PetDetailModal] Converting care instructions to care object:', careInstructions);
+      initialData.care = stringToCareObject(careInstructions);
+      // Ensure we're using the correct field name for the database
+      initialData.care_instructions = careInstructions;
+      // Remove any singular form if it exists
+      if ('care_instruction' in initialData) {
+        delete initialData.care_instruction;
+      }
+    } else {
+      // Handle case where database has 'care_instructions' column but the value is missing
+      
+      // Check if there's an old 'care' object we can use
+      if (initialData.care) {
+        console.log('[PetDetailModal] Using existing care object:', initialData.care);
+        // Keep the care object and create care_instructions from it
+        initialData.care_instructions = careObjectToString(initialData.care);
+      } else {
+        console.log('[PetDetailModal] No care data found, initializing empty care object');
+        // Neither care_instructions nor care exists, initialize empty
+        initialData.care = {};
+      }
+    }
+    
+    // If we have image_url but not photos array, initialize photos
+    if (initialData.image_url && (!initialData.photos || initialData.photos.length === 0)) {
+      console.log('[PetDetailModal] Using image_url as photos[0]:', initialData.image_url);
+      initialData.photos = [initialData.image_url];
+    }
+    
+    console.log('[PetDetailModal] Initialized form data:', JSON.stringify(initialData));
+    return initialData;
+  }, [editingPet]);
+  
+  const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,14 +128,30 @@ const PetDetailModal: React.FC = () => {
     });
   }, []);
 
+
   const handleCareChange = useCallback((field: string, value: any) => {
     console.log('[PetDetailModal] handleCareChange:', field, value);
     setForm((prev: any) => {
       if (!prev) {
         console.warn('[PetDetailModal] handleCareChange called with null previous state');
-        return { care: { [field]: value } };
+        return { 
+          // Store temporary care object for UI
+          care: { [field]: value },
+          // Update care_instructions string for database
+          care_instructions: careObjectToString({ [field]: value })
+        };
       }
-      return { ...prev, care: { ...(prev.care || {}), [field]: value } };
+      
+      // Create updated care object
+      const updatedCare = { ...(prev.care || {}), [field]: value };
+      
+      return { 
+        ...prev, 
+        // Store care object for UI
+        care: updatedCare,
+        // Update care_instructions string for database
+        care_instructions: careObjectToString(updatedCare)
+      };
     });
   }, []);
 
@@ -146,16 +248,61 @@ const PetDetailModal: React.FC = () => {
     }
     
     try {
-      if (!form.id) {
-        // Add new pet
+      // Prepare the pet data for the database - only include fields that match the schema
+      const petData: any = {
+        // Only include id if it's a valid UUID (not empty)
+        // For new pets, let the database generate an ID
+        owner_id: form.owner_id,
+        name: form.name,
+        species: form.species
+      };
+      
+      // Only add the ID if it's a non-empty string (for existing pets)
+      if (form.id && form.id.trim() !== '') {
+        petData.id = form.id;
+      }
+      
+      // Add optional fields if they exist
+      if (form.breed) petData.breed = form.breed;
+      if (form.age !== undefined) petData.age = form.age;
+      if (form.weight !== undefined) petData.weight = form.weight;
+      
+      // Handle images - prioritize the first photo as image_url
+      if (form.photos && form.photos.length > 0) {
+        petData.image_url = form.photos[0];
+      } else if (form.image_url) {
+        petData.image_url = form.image_url;
+      }
+      
+      // Make sure care_instructions is set from the current care object
+      if (form.care) {
+        petData.care_instructions = careObjectToString(form.care);
+      } else if (form.care_instructions) {
+        // Keep existing care_instructions if present
+        petData.care_instructions = form.care_instructions;
+      }
+      
+      // Ensure no UI-only fields are sent to the database
+      console.log('[PetDetailModal] Cleaned pet data for database:', petData);
+      
+      console.log('[PetDetailModal] Prepared pet data:', petData);
+      
+      // Check if this is a new pet or existing pet
+      const isNewPet = !form.id || form.id.trim() === '';
+      
+      if (isNewPet) {
+        // Add new pet - no ID field, let database generate it
         console.log('[PetDetailModal] Adding new pet');
-        await dispatch(addPetAsync(form) as any).unwrap();
+        await dispatch(addPetAsync(petData) as any).unwrap();
         console.log('[PetDetailModal] Successfully added new pet');
       } else {
         // Update existing pet
-        console.log('[PetDetailModal] Updating existing pet:', form.id);
-        await dispatch(updatePetAsync({ petId: form.id, updates: form }) as any).unwrap();
-        console.log('[PetDetailModal] Successfully updated pet:', form.id);
+        console.log('[PetDetailModal] Updating existing pet:', petData.id);
+        await dispatch(updatePetAsync({ 
+          petId: petData.id, 
+          updates: petData 
+        }) as any).unwrap();
+        console.log('[PetDetailModal] Successfully updated pet:', petData.id);
       }
       dispatch(setEditingPet(null));
     } catch (err: any) {

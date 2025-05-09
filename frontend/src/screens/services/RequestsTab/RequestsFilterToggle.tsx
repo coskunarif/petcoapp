@@ -10,17 +10,17 @@ import {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDispatch, useSelector } from 'react-redux';
-import { setRequestsTabAsProvider } from '../../../redux/slices/serviceSlice';
 import { theme } from '../../../theme';
 
 const { width } = Dimensions.get('window');
 const isMobile = width < 600;
 
-export default function RequestsFilterToggle() {
-  const dispatch = useDispatch();
-  const asProvider = useSelector((state: any) => state.services?.requestsTabAsProvider) ?? true;
-  
+interface RequestsFilterToggleProps {
+  asProvider: boolean;
+  onToggle: (asProvider: boolean) => void;
+}
+
+export default function RequestsFilterToggle({ asProvider, onToggle }: RequestsFilterToggleProps) {
   // Animation references
   const slideAnim = useRef(new Animated.Value(asProvider ? 0 : 1)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -68,7 +68,7 @@ export default function RequestsFilterToggle() {
           {/* Toggle Buttons */}
           <TouchableOpacity 
             style={[styles.tabContainer, styles.leftTab]} 
-            onPress={() => dispatch(setRequestsTabAsProvider(true))}
+            onPress={() => onToggle(true)}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons 
@@ -87,7 +87,7 @@ export default function RequestsFilterToggle() {
           
           <TouchableOpacity 
             style={[styles.tabContainer, styles.rightTab]} 
-            onPress={() => dispatch(setRequestsTabAsProvider(false))}
+            onPress={() => onToggle(false)}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons 

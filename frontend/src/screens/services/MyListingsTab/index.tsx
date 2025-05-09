@@ -5,7 +5,8 @@ import {
   Animated, 
   Text,
   TouchableOpacity,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,19 +14,41 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ActiveListingsSection from './ActiveListingsSection';
 import EmptyListingsState from './EmptyListingsState';
 import { theme } from '../../../theme';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { 
+  fetchServiceListings, 
+  fetchAllServiceTypes,
+  selectServiceListings,
+  selectServiceTypes,
+  selectServiceListingsLoading,
+  selectServiceListingsError,
+  addServiceListing
+} from '../../../redux/slices/serviceSlice';
+import { servicesService } from '../../../services/servicesService';
+import { AppDispatch, RootState } from '../../../store';
+import { ServiceListing, ServiceType } from '../../../types/services';
+import { EmptyState } from '../../../components/ui';
+import { ServiceFormModal } from '../../../components';
 
 interface MyListingsTabProps {
   onScroll?: (event: any) => void;
 }
 
 export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
-  // In a real app, we would fetch this from an API
-  // Placeholder logic for whether user has listings
-  const [hasListings, setHasListings] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const user = useSelector((state: any) => state.auth?.user);
+  const dispatch = useDispatch<AppDispatch>();
+  const user = useSelector((state: RootState) => state.auth?.user);
   
+  // Use proper typed selectors
+  const userListings = useSelector(selectServiceListings);
+  const loading = useSelector(selectServiceListingsLoading);
+  const error = useSelector(selectServiceListingsError);
+  const serviceTypes = useSelector(selectServiceTypes);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [serviceFormVisible, setServiceFormVisible] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<ServiceListing | null>(null);
+
   // Split animation values by purpose to avoid conflicts:
   // jsScrollY is used for JS-based animations within this component only
   const jsScrollY = useRef(new Animated.Value(0)).current;
@@ -65,20 +88,107 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
     extrapolate: 'clamp',
   });
   
-  // Simulating user data fetch
+  // Load user listings and service types
   useEffect(() => {
-    setIsLoading(true);
-    
-    // Simulate API delay
-    const timeout = setTimeout(() => {
-      setIsLoading(false);
+    if (user?.id) {
+      fetchUserListings();
+      // Fetch service types if not already loaded
+      if (!serviceTypes || serviceTypes.length === 0) {
+        dispatch(fetchAllServiceTypes());
+      }
+    }
+  }, [user?.id]);
+
+  // Function to fetch listings for the current user
+  const fetchUserListings = async () => {
+    try {
+      setIsLoading(true);
       
-      // For demo, we're setting hasListings to true
-      setHasListings(true);
-    }, 500);
-    
-    return () => clearTimeout(timeout);
-  }, []);
+      if (!user?.id) {
+        console.warn('Cannot fetch listings - user not authenticated');
+        setIsLoading(false);
+        return;
+      }
+
+      // Dispatch action to fetch listings for current user
+      await dispatch(fetchServiceListings({ provider_id: user.id }));
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+      setIsLoading(false);
+    }
+  };
+
+  // Function to refresh listings
+  const refreshListings = async () => {
+    setRefreshing(true);
+    await fetchUserListings();
+    setRefreshing(false);
+  };
+
+  // Function to open the service form modal for creating a new listing
+  const handleCreateListing = () => {
+    setSelectedListing(null); // No initial values for a new listing
+    setServiceFormVisible(true);
+  };
+
+  // Function to open the service form modal for editing an existing listing
+  const handleEditListing = (listing: ServiceListing) => {
+    setSelectedListing(listing);
+    setServiceFormVisible(true);
+  };
+
+  // Function to handle service form submission
+  const handleServiceFormSubmit = async (formData: any) => {
+    try {
+      if (!user?.id) {
+        console.warn('Cannot create/update listing - user not authenticated');
+        return;
+      }
+      
+      // Transform the form data to match ServiceListing structure
+      const serviceData: Omit<ServiceListing, 'id' | 'created_at'> = {
+        title: formData.title,
+        service_type_id: formData.service_type_id,
+        description: formData.description,
+        provider_id: user.id,
+        is_active: true,
+        // Use the availability_schedule from form data if available
+        availability_schedule: formData.availability_schedule || {
+          days: [],
+          hours: '',
+          notes: ''
+        }
+      };
+      
+      if (selectedListing) {
+        // Update existing listing
+        const result = await servicesService.updateListing(selectedListing.id, serviceData);
+        
+        if (result.error) {
+          console.error('Error updating listing:', result.error);
+        } else {
+          console.log('Listing updated successfully');
+          // Refresh listings to show the updated one
+          refreshListings();
+        }
+      } else {
+        // Create new listing
+        const result = await servicesService.createListing(serviceData);
+        
+        if (result.error) {
+          console.error('Error creating listing:', result.error);
+        } else {
+          console.log('Listing created successfully');
+          // Refresh listings to show the new one
+          refreshListings();
+        }
+      }
+    } catch (error) {
+      console.error('Error handling listing:', error);
+    }
+  };
   
   const renderHeader = () => (
     <Animated.View 
@@ -102,10 +212,14 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
           
           <View style={styles.actionRow}>
             <Text style={styles.statsText}>
-              {isLoading ? 'Loading...' : `${hasListings ? '3 Active' : '0'} Listings`}
+              {isLoading ? 'Loading...' : `${userListings.length || 0} Active Listing${userListings.length !== 1 ? 's' : ''}`}
             </Text>
             
-            <TouchableOpacity style={styles.addButton}>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={handleCreateListing}
+              disabled={isLoading || refreshing}
+            >
               <LinearGradient
                 colors={[theme.colors.primary, theme.colors.primaryDark]}
                 style={styles.addButtonGradient}
@@ -119,34 +233,70 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
       </BlurView>
     </Animated.View>
   );
+
+  // Error state
+  if (error && !refreshing && !isLoading) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        <EmptyState
+          icon="alert-circle"
+          title="Something went wrong"
+          description={`We couldn't load your listings. ${error}`}
+          buttonTitle="Try Again"
+          onButtonPress={refreshListings}
+        />
+      </View>
+    );
+  }
   
   return (
     <View style={styles.container}>
       {/* Header Section */}
       {renderHeader()}
       
+      {/* Service Form Modal */}
+      <ServiceFormModal
+        visible={serviceFormVisible}
+        onClose={() => setServiceFormVisible(false)}
+        onSubmit={handleServiceFormSubmit}
+        serviceTypes={serviceTypes || []}
+        initialValues={selectedListing ? {
+          title: selectedListing.title,
+          service_type_id: selectedListing.service_type_id,
+          description: selectedListing.description
+        } : undefined}
+        mode={selectedListing ? 'edit' : 'create'}
+        showTitle={true}
+        showDate={false}
+      />
+      
       {/* Content Section */}
       <View style={styles.contentContainer}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <MaterialCommunityIcons 
-              name="loading" 
-              size={28} 
+            <ActivityIndicator 
+              size="large"
               color={theme.colors.primary}
-              style={{ opacity: 0.7 }}
             />
             <Text style={styles.loadingText}>Loading your listings...</Text>
           </View>
         ) : (
-          hasListings ? 
+          userListings.length > 0 ? 
             <ActiveListingsSection 
+              listings={userListings}
+              refreshing={refreshing}
+              onRefresh={refreshListings}
+              onEditListing={handleEditListing}
               onScroll={(e) => {
                 // Split the event handling into separate functions
                 handleLocalScroll(e);
                 handleParentScroll(e);
               }} 
             /> : 
-            <EmptyListingsState />
+            <View style={styles.emptyStateWrapper}>
+              <EmptyListingsState onCreateListing={handleCreateListing} />
+            </View>
         )}
       </View>
     </View>
@@ -220,6 +370,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyStateWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: 50,
   },
   loadingText: {
     marginTop: 12,

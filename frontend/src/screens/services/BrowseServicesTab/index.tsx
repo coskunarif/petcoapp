@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   FlatList, 
@@ -13,7 +13,6 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../../../supabaseClient';
 import { useNavigation } from '@react-navigation/native';
 import { theme, globalStyles } from '../../../theme';
 import { 
@@ -22,10 +21,25 @@ import {
   EmptyState, 
   StatusBadge 
 } from '../../../components/ui';
-import { ServicesNavigationProp } from '../../../types/navigation';
+import { useDispatch, useSelector } from 'react-redux';
+import { createSelector } from '@reduxjs/toolkit';
+import { 
+  fetchServiceListings, 
+  fetchAllServiceTypes,
+  selectServiceListings,
+  selectServiceListingsLoading,
+  selectServiceListingsError,
+  selectServiceTypes,
+  setListingFilters,
+  selectListingFilters,
+  loadMockServiceListings  // Import the mock data action
+} from '../../../redux/slices/serviceSlice';
+import { servicesService } from '../../../services/servicesService';
+import { AppDispatch, RootState } from '../../../store';
 
 // Create a ServiceDetailModal standalone component
 import ServiceDetailModal from '../ServiceDetailModal';
+import ServiceCard from './ServiceCard';
 
 // Create animated FlatList component to support native events with useNativeDriver
 const AnimatedFlatList = Animated.createAnimatedComponent<any>(FlatList);
@@ -34,23 +48,69 @@ interface BrowseServicesTabProps {
   onScroll?: (event: any) => void;
 }
 
+// Create memoized selectors outside of the component
+const selectServicesListings = createSelector(
+  [(state: RootState) => state.services?.listings || []],
+  (listings) => listings
+);
+
+const selectServicesLoading = createSelector(
+  [(state: RootState) => state.services?.listingsLoading || false],
+  (loading) => loading
+);
+
+const selectServicesError = createSelector(
+  [(state: RootState) => state.services?.listingsError || null],
+  (error) => error
+);
+
+const selectServiceTypesList = createSelector(
+  [(state: RootState) => state.services?.serviceTypes || []],
+  (types) => types
+);
+
+const selectListingFiltersList = createSelector(
+  [(state: RootState) => state.services?.listingFilters || {}],
+  (filters) => filters
+);
+
 const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch<AppDispatch>();
+  
+  // Use proper memoized selectors
+  const services = useSelector((state: RootState) => {
+    console.log('[BrowseServicesTab] Selecting services from Redux state:', {
+      hasServicesState: !!state.services,
+      listingsLength: state.services?.listings?.length || 0,
+      listings: state.services?.listings || []
+    });
+    return selectServicesListings(state);
+  });
+  
+  const loading = useSelector(selectServicesLoading);
+  const error = useSelector(selectServicesError);
+  const serviceTypes = useSelector(selectServiceTypesList);
+  const filters = useSelector(selectListingFiltersList);
+  
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(filters.typeId || null);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const navigation = useNavigation<any>();
   
-  // Animation values
+  // Animation values - ensure consistent use of native driver for all animations
+  // Use separate Animated.Value for scroll events to avoid conflicts
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerHeight = 140; // Adjust this value based on your header height
+  
+  // These transforms will use native driver since they're simple transforms
   const translateY = scrollY.interpolate({
     inputRange: [0, headerHeight],
     outputRange: [0, -20],
     extrapolate: 'clamp',
   });
+  
+  // Opacity is also compatible with native driver
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, headerHeight * 0.5, headerHeight],
     outputRange: [1, 0.6, 0],
@@ -58,50 +118,170 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
   });
 
   useEffect(() => {
+    // Load service types if not loaded
+    if (serviceTypes.length === 0) {
+      dispatch(fetchAllServiceTypes());
+    }
+    
+    // Initial services fetch
     fetchServices();
+  }, []);
+
+  // Refetch whenever the selected filter changes
+  useEffect(() => {
+    if (selectedFilter !== (filters.typeId || null)) {
+      // Provide feedback via console to help debugging
+      console.log('[BrowseServicesTab] Filter changed:', { 
+        previous: filters.typeId || 'All', 
+        new: selectedFilter || 'All' 
+      });
+      
+      // Update Redux filter state when local filter changes
+      dispatch(setListingFilters({ 
+        typeId: selectedFilter || undefined 
+      }));
+      
+      // Show loading state immediately
+      if (!refreshing) {
+        setRefreshing(true);
+      }
+      
+      // Add a small delay to show loading transition
+      setTimeout(() => {
+        fetchServices();
+      }, 300);
+    }
   }, [selectedFilter]);
+  
+  // Track which filter produced current results
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  
+  // Update active filter when services are loaded
+  useEffect(() => {
+    if (!loading && !refreshing) {
+      setActiveFilter(selectedFilter);
+    }
+  }, [loading, refreshing]);
+
+  // Helper function to create mock data for testing
+  const createMockServices = () => {
+    console.log('[BrowseServicesTab] Creating mock service listings for testing');
+    
+    const mockServiceTypes = [
+      { id: 'type1', name: 'Dog Walking', icon: 'dog', credit_value: 30 },
+      { id: 'type2', name: 'Pet Sitting', icon: 'home', credit_value: 50 },
+      { id: 'type3', name: 'Grooming', icon: 'scissors-cutting', credit_value: 40 }
+    ];
+    
+    const mockServices = [
+      {
+        id: 'service1',
+        title: 'Professional Dog Walking',
+        description: 'Experienced dog walker available in your area. Daily walks and exercise for your pets.',
+        provider_id: 'user1',
+        service_type_id: 'type1',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        provider: { id: 'user1', full_name: 'Jane Smith', profile_image_url: null },
+        service_type: mockServiceTypes[0]
+      },
+      {
+        id: 'service2',
+        title: 'In-home Pet Sitting',
+        description: 'I will take care of your pets in your home while you are away. Food, water, medication, and plenty of love.',
+        provider_id: 'user2',
+        service_type_id: 'type2',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        provider: { id: 'user2', full_name: 'John Doe', profile_image_url: null },
+        service_type: mockServiceTypes[1]
+      },
+      {
+        id: 'service3',
+        title: 'Pet Grooming Services',
+        description: 'Full grooming service including bath, haircut, nail trimming, and ear cleaning.',
+        provider_id: 'user3',
+        service_type_id: 'type3',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        provider: { id: 'user3', full_name: 'Maria Johnson', profile_image_url: null },
+        service_type: mockServiceTypes[2]
+      }
+    ];
+    
+    return mockServices;
+  };
 
   const fetchServices = async () => {
     try {
-      setLoading(true);
+      setRefreshing(true);
       
-      let query = supabase
-        .from('service_listings')
-        .select(`
-          *,
-          users:provider_id (full_name, profile_image_url),
-          service_types (name, icon)
-        `)
-        .eq('is_active', true);
-        
-      // Fix the filter query to handle non-UUID values properly
-      if (selectedFilter !== 'all') {
-        // For demo/testing purposes, map numeric string IDs to proper UUIDs
-        // In production, you would use actual UUIDs from your database
-        const typeIdMap: {[key: string]: string} = {
-          '1': '123e4567-e89b-12d3-a456-426614174000', // Dog Walking 
-          '2': '123e4567-e89b-12d3-a456-426614174001', // Pet Sitting
-          '3': '123e4567-e89b-12d3-a456-426614174002', // Grooming
-          '4': '123e4567-e89b-12d3-a456-426614174003', // Training
-        };
-        
-        const mappedId = typeIdMap[selectedFilter];
-        if (mappedId) {
-          query = query.eq('service_type_id', mappedId);
-        } else {
-          console.warn(`No UUID mapping found for filter: ${selectedFilter}`);
-        }
+      const filterParams: any = { is_active: true };
+      
+      // Apply type filter if selected
+      if (selectedFilter) {
+        filterParams.type_id = selectedFilter;
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
-        
-      if (error) throw error;
+      console.log('[BrowseServicesTab] Dispatching fetchServiceListings with params:', filterParams);
       
-      setServices(data || []);
+      // Check if dispatch is available
+      if (!dispatch) {
+        console.error('[BrowseServicesTab] Dispatch function not available');
+        setRefreshing(false);
+        return;
+      }
+      
+      // First try to fetch from API
+      try {
+        const result = await dispatch(fetchServiceListings(filterParams));
+        
+        // The fulfilled action.payload will have our listings directly
+        const retrievedListings = fetchServiceListings.fulfilled.match(result) 
+          ? result.payload 
+          : [];
+        
+        const hasListings = retrievedListings && retrievedListings.length > 0;
+        
+        console.log('[BrowseServicesTab] After API fetch, hasListings:', hasListings, 
+          'count:', retrievedListings?.length || 0);
+        
+        // Log current Redux state for debugging
+        // Use process.env instead of import.meta which is not supported in Hermes
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        const currentStore = isDevelopment
+          ? Object.keys(services) 
+          : 'Production mode';
+        
+        console.log('[BrowseServicesTab] Current services data:', {
+          servicesLength: services?.length || 0,
+          servicesData: Array.isArray(services) ? services.slice(0, 3) : 'Not an array',
+          currentStore,
+          isDevelopment
+        });
+        
+        // If no data after API call, we'll use mock data for debugging
+        // IMPORTANT: This is only for debugging and will be removed in production
+        if (!hasListings) {
+          console.log('[BrowseServicesTab] No listings from API, loading mock data');
+          
+          // Dispatch action to load mock data into Redux
+          await dispatch(loadMockServiceListings());
+          
+          // Log that we're using mock data
+          console.log('[BrowseServicesTab] Mock data loaded for UI testing');
+          
+          // Force an alert message to indicate we're using mock data
+          setTimeout(() => {
+            alert('No data found in the Supabase database. Using mock service listings for UI testing purposes. Make sure your Redux store and Supabase configurations are correct.');
+          }, 500);
+        }
+      } catch (dispatchError) {
+        console.error('[BrowseServicesTab] Error dispatching action:', dispatchError);
+      }
     } catch (error) {
-      console.error('Error fetching services:', error);
+      console.error('[BrowseServicesTab] Error fetching services:', error);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
@@ -116,91 +296,45 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
     setModalVisible(true);
   };
 
-  // No longer need the explicit handleScroll function since we're using Animated.event
-  // The listener parameter in Animated.event will handle propagating to parent if needed
-
   const renderServiceCard = ({ item, index }: { item: any, index: number }) => {
-    // Calculate delay for staggered animation
-    const delay = index * 100;
-    
     return (
-      <Animated.View
-        style={{
-          opacity: 1,
-          transform: [{ 
-            translateY: scrollY.interpolate({
-              inputRange: [-100, 0, 100 + (index * 50)],
-              outputRange: [0, 0, 20],
-              extrapolate: 'clamp',
-            })
-          }],
-        }}
-      >
-        <TouchableOpacity 
-          onPress={() => handleServicePress(item)}
-          activeOpacity={0.7}
-          style={styles.cardTouchable}
-        >
-          <BlurView intensity={80} tint="light" style={styles.cardBlur}>
-            <View style={styles.serviceCardHeader}>
-              <View style={styles.serviceTypeContainer}>
-                <LinearGradient
-                  colors={['rgba(108, 99, 255, 0.2)', 'rgba(108, 99, 255, 0.05)']}
-                  style={styles.iconBackground}
-                >
-                  <MaterialCommunityIcons 
-                    name={item.service_types?.icon || "paw"} 
-                    size={18} 
-                    color={theme.colors.primary}
-                  />
-                </LinearGradient>
-                <Text style={styles.serviceType}>{item.service_types?.name || 'Service'}</Text>
-              </View>
-              <StatusBadge status="active" size="small" />
-            </View>
-            
-            <Text style={styles.serviceTitle}>{item.title || 'Untitled Service'}</Text>
-            <Text style={styles.serviceDescription} numberOfLines={2}>
-              {item.description || 'No description available'}
-            </Text>
-            
-            <View style={styles.serviceFooter}>
-              <View style={styles.providerContainer}>
-                <View style={styles.providerAvatar}>
-                  <Text style={styles.providerInitial}>
-                    {item.users?.full_name?.charAt(0) || 'U'}
-                  </Text>
-                </View>
-                <Text style={styles.providerName}>{item.users?.full_name || 'Unknown Provider'}</Text>
-              </View>
-              
-              <View style={styles.actionButtonContainer}>
-                <MaterialCommunityIcons 
-                  name="chevron-right" 
-                  size={24} 
-                  color={theme.colors.primary}
-                />
-              </View>
-            </View>
-          </BlurView>
-        </TouchableOpacity>
-      </Animated.View>
+      <ServiceCard 
+        service={item}
+        index={index}
+        onPress={() => handleServicePress(item)}
+      />
     );
   };
 
   const renderFilterChips = () => {
-    const filters = [
-      { id: 'all', name: 'All Services', icon: 'apps' },
-      { id: '1', name: 'Dog Walking', icon: 'dog' },
-      { id: '2', name: 'Pet Sitting', icon: 'home-heart' },
-      { id: '3', name: 'Grooming', icon: 'scissors-cutting' },
-      { id: '4', name: 'Training', icon: 'school' },
+    // Create "All Services" option plus service types from backend
+    const filterOptions = [
+      { id: null, name: 'All Services', icon: 'apps' },
+      ...serviceTypes.map(type => ({
+        id: type.id,
+        name: type.name,
+        icon: type.icon
+      }))
     ];
     
     return (
       <View style={styles.filtersContainer}>
+        {/* Filter section header to establish context */}
+        <View style={styles.filterHeaderContainer}>
+          <Text style={styles.filterHeaderText}>Filter Services</Text>
+          {selectedFilter && (
+            <TouchableOpacity 
+              style={styles.clearFilterButton}
+              onPress={() => setSelectedFilter(null)}
+            >
+              <Text style={styles.clearFilterText}>Clear All</Text>
+              <MaterialCommunityIcons name="close" size={16} color={theme.colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        
         <FlatList
-          data={filters}
+          data={filterOptions}
           horizontal
           showsHorizontalScrollIndicator={false}
           renderItem={({ item }) => (
@@ -210,6 +344,10 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
                 selectedFilter === item.id && styles.filterChipSelected
               ]}
               onPress={() => setSelectedFilter(item.id)}
+              accessible={true}
+              accessibilityLabel={`Filter by ${item.name}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedFilter === item.id }}
             >
               <MaterialCommunityIcons
                 name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}
@@ -225,11 +363,24 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
               >
                 {item.name}
               </Text>
+              
+              {/* Show clear indicator for selected filter */}
+              {selectedFilter === item.id && (
+                <MaterialCommunityIcons
+                  name="check"
+                  size={16}
+                  color="#FFFFFF"
+                  style={styles.selectedFilterIcon}
+                />
+              )}
             </TouchableOpacity>
           )}
-          keyExtractor={item => item.id}
+          keyExtractor={item => String(item.id || 'all')}
           contentContainerStyle={styles.filtersContent}
         />
+        
+        {/* Divider to visually connect filters to content */}
+        <View style={styles.filterDivider} />
       </View>
     );
   };
@@ -265,56 +416,160 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
     </Animated.View>
   );
 
+  // Error state
+  if (error && !refreshing && !loading) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        {renderFilterChips()}
+        <EmptyState
+          icon="alert-circle"
+          title="Something went wrong"
+          description={`We couldn't load the services. ${error}`}
+          buttonTitle="Try Again"
+          onButtonPress={onRefresh}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {renderHeader()}
       
       {renderFilterChips()}
       
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading services...</Text>
-        </View>
-      ) : services.length === 0 ? (
-        <EmptyState
-          icon="magnify"
-          title="No services available"
-          description={`We couldn't find any ${selectedFilter !== 'all' ? 'matching ' : ''}services at this time`}
-          buttonTitle={selectedFilter !== 'all' ? "View All Services" : "Refresh"}
-          onButtonPress={selectedFilter !== 'all' ? () => setSelectedFilter('all') : onRefresh}
-        />
-      ) : (
-        <AnimatedFlatList
-          data={services}
-          renderItem={renderServiceCard}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true, listener: onScroll }
-          )}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary]}
-              progressBackgroundColor="rgba(255, 255, 255, 0.8)"
-            />
+      {/* Main Content Container - wraps everything for consistent layout */}
+      <View style={styles.mainContentContainer}>
+        {(() => {
+          // Add extra debug information to troubleshoot rendering issues
+          console.log('[BrowseServicesTab] Rendering content section:', {
+            loading,
+            refreshing,
+            servicesExist: !!services,
+            servicesIsArray: Array.isArray(services),
+            servicesLength: services?.length || 0,
+            servicesData: services
+          });
+          
+          // Loading state
+          if (loading && !refreshing) {
+            return (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Loading services...</Text>
+              </View>
+            );
           }
-        />
-      )}
+          
+          // No services state (empty state)
+          // Check explicitly that services exists, is an array, and has length of 0
+          if (!services || !Array.isArray(services) || services.length === 0) {
+            return (
+              <View style={styles.emptyStateContainer}>
+                {/* Contextual information about current filter */}
+                {activeFilter && (
+                  <View style={styles.contextBanner}>
+                    <Text style={styles.contextText}>
+                      <MaterialCommunityIcons 
+                        name="filter-variant" 
+                        size={16} 
+                        color={theme.colors.primary} 
+                        style={{marginRight: 6}} 
+                      />
+                      Filtered by: {serviceTypes.find(type => type.id === activeFilter)?.name || 'Custom Filter'}
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.clearFilterPill}
+                      onPress={() => setSelectedFilter(null)}
+                      accessible={true}
+                      accessibilityLabel="Clear filter"
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.clearFilterPillText}>Clear</Text>
+                      <MaterialCommunityIcons name="close" size={12} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                <EmptyState
+                  icon={activeFilter ? "filter-remove" : "magnify"}
+                  title={activeFilter 
+                    ? "No matching services" 
+                    : "No services available"}
+                  description={activeFilter 
+                    ? `We couldn't find any services matching your selected filter` 
+                    : "There are no available services in your area at this time"}
+                  buttonTitle={activeFilter ? "View All Services" : "Refresh"}
+                  onButtonPress={activeFilter ? () => setSelectedFilter(null) : onRefresh}
+                  style={styles.emptyStateStyle}
+                />
+                
+                {/* Additional guidance for the user */}
+                <View style={styles.emptyStateFooter}>
+                  <MaterialCommunityIcons
+                    name={activeFilter ? "information" : "clock-time-four-outline"}
+                    size={18}
+                    color={theme.colors.textSecondary}
+                    style={{marginRight: 8}}
+                  />
+                  <Text style={styles.emptyStateFooterText}>
+                    {activeFilter 
+                      ? `Try selecting a different service type or remove the filter to see all available services` 
+                      : "Check back later for new service listings from providers in your area"}
+                  </Text>
+                </View>
+              </View>
+            );
+          }
+          
+          // Has services state
+          console.log('[BrowseServicesTab] Rendering services list with count:', services.length);
+          
+          // For debugging, log the first service
+          if (services.length > 0) {
+            console.log('[BrowseServicesTab] First service:', {
+              id: services[0].id,
+              title: services[0].title,
+              provider: services[0].provider?.full_name,
+              type: services[0].service_type?.name
+            });
+          }
+          
+          return (
+            <AnimatedFlatList
+              data={services}
+              renderItem={renderServiceCard}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContainer}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                { useNativeDriver: true, listener: onScroll }
+              )}
+              scrollEventThrottle={16}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[theme.colors.primary]}
+                  progressBackgroundColor="rgba(255, 255, 255, 0.8)"
+                />
+              }
+            />
+          );
+        })()}
+      </View>
 
       {/* Service Detail Modal */}
-      {selectedService && (
-        <ServiceDetailModal
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-          service={selectedService}
-        />
-      )}
+      <ServiceDetailModal
+        visible={modalVisible}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedService(null);
+        }}
+        serviceId={selectedService?.id}
+      />
     </View>
   );
 };
@@ -324,10 +579,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
+  mainContentContainer: {
+    flex: 1, 
+    position: 'relative',
+    zIndex: 1, // Ensure content is below filters but still accessible
+  },
   headerContainer: {
     height: 140,
     marginBottom: 10,
     overflow: 'hidden',
+    zIndex: 10,
   },
   headerBlur: {
     flex: 1,
@@ -387,8 +648,41 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   filtersContainer: {
-    marginBottom: 16,
-    zIndex: 1,
+    marginBottom: 8,
+    zIndex: 5,
+    position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(108,99,255,0.1)',
+    paddingBottom: 8,
+    ...theme.elevation.small,
+  },
+  filterHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  filterHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  clearFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(108,99,255,0.05)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: theme.borderRadius.pill,
+  },
+  clearFilterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginRight: 4,
   },
   filtersContent: {
     paddingHorizontal: 16,
@@ -413,6 +707,9 @@ const styles = StyleSheet.create({
   filterIcon: {
     marginRight: 6,
   },
+  selectedFilterIcon: {
+    marginLeft: 6,
+  },
   filterChipText: {
     color: theme.colors.text,
     fontWeight: '600',
@@ -421,98 +718,81 @@ const styles = StyleSheet.create({
   filterChipTextSelected: {
     color: '#FFFFFF',
   },
-  cardTouchable: {
-    marginBottom: 16,
-    borderRadius: 24,
-    overflow: 'hidden',
+  filterDivider: {
+    height: 2,
+    backgroundColor: 'rgba(108,99,255,0.05)',
+    marginHorizontal: 16,
+    marginTop: 4,
+  },
+  // New improved empty state styles
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 80,
+    justifyContent: 'center',
+  },
+  emptyStateStyle: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.15)',
     ...theme.elevation.medium,
   },
-  cardBlur: {
-    padding: 20,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  serviceCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  serviceTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconBackground: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    ...theme.elevation.small,
-  },
-  serviceType: {
-    color: theme.colors.primary,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  serviceTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: theme.colors.text,
-    marginBottom: 8,
-  },
-  serviceDescription: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: theme.colors.textSecondary,
+  contextBanner: {
+    backgroundColor: 'rgba(108,99,255,0.08)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: theme.borderRadius.medium,
     marginBottom: 16,
-    lineHeight: 22,
-  },
-  serviceFooter: {
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.1)',
   },
-  providerContainer: {
+  contextText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  providerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.primaryLight,
-    justifyContent: 'center',
+  clearFilterPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.2)',
   },
-  providerInitial: {
-    color: theme.colors.primary,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  providerName: {
-    color: theme.colors.text,
+  clearFilterPillText: {
+    fontSize: 12,
     fontWeight: '600',
-    fontSize: 15,
+    color: theme.colors.primary,
+    marginRight: 4,
   },
-  actionButtonContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    justifyContent: 'center',
+  emptyStateFooter: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: theme.borderRadius.small,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    width: '100%',
+    flexDirection: 'row',
     alignItems: 'center',
-    ...theme.elevation.small,
+  },
+  emptyStateFooterText: {
+    flex: 1,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
   },
 });
 

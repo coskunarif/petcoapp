@@ -23,7 +23,8 @@ import UpcomingServicesSection from './UpcomingServicesSection';
 import NearbyProvidersSection from './NearbyProvidersSection';
 import QuickActionsSection from './QuickActionsSection';
 import OfferServiceModal from './OfferServiceModal';
-import RequestServiceModal from './RequestServiceModal';
+import TestModal from './TestModal'; // Import the test modal
+import { ServiceFormModal } from '../../components';
 
 // Services & Redux
 import { getCurrentLocation } from '../../services/locationService';
@@ -217,12 +218,14 @@ const HomeScreen: React.FC = () => {
   };
 
   // Handler for requesting a service
-  const handleRequestService = async (request: {
-    service_type_id: string;
-    description: string;
-    date: string;
-    pet_id?: string;
-  }) => {
+  const handleRequestService = async (formData: any) => {
+    // Transform the form data to match the expected structure
+    const request = {
+      service_type_id: formData.service_type_id,
+      description: formData.description,
+      date: formData.date,
+      pet_id: undefined
+    };
     try {
       console.log('[HomeScreen] handleRequestService called with:', request);
       
@@ -519,6 +522,7 @@ const HomeScreen: React.FC = () => {
       )}
 
       {/* Modals */}
+      {/* Service Modals */}
       <OfferServiceModal
         visible={offerModalVisible}
         onClose={() => setOfferModalVisible(false)}
@@ -526,12 +530,14 @@ const HomeScreen: React.FC = () => {
         serviceTypes={serviceTypes}
       />
       
-      <RequestServiceModal
+      <ServiceFormModal
         visible={requestModalVisible}
         onClose={() => setRequestModalVisible(false)}
         onSubmit={handleRequestService}
         serviceTypes={serviceTypes}
-        pets={userPets}
+        mode="request"
+        showTitle={true}
+        showDate={true}
       />
       
       {/* Main Content */}

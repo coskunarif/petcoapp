@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -13,14 +13,54 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import RequestsFilterToggle from './RequestsFilterToggle';
 import RequestsList from './RequestsList';
 import { theme } from '../../../theme';
+import { useSelector, useDispatch } from 'react-redux';
+import { 
+  fetchAllServiceRequests,
+  setRequestsTabAsProvider,
+  selectRequestsTabAsProvider
+} from '../../../redux/slices/serviceSlice';
+import { AppDispatch } from '../../../redux/store';
 
 interface RequestsTabProps {
   onScroll?: (event: any) => void;
 }
 
 export default function RequestsTab({ onScroll }: RequestsTabProps) {
+  const dispatch = useDispatch<AppDispatch>();
+  // Safe selector that handles undefined state
+  const asProvider = useSelector((state: any) => state.services?.requestsTabAsProvider ?? true);
+  const user = useSelector((state: any) => state.auth?.user);
+  
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
+  
+  // Load requests on mount and when filter changes
+  useEffect(() => {
+    loadRequests();
+  }, [asProvider, user?.id]);
+  
+  // Function to load requests
+  const loadRequests = async () => {
+    try {
+      if (!user?.id) {
+        console.warn('Cannot fetch requests - user not authenticated');
+        return;
+      }
+      
+      // Dispatch to fetch requests with the current filter
+      await dispatch(fetchAllServiceRequests({
+        userId: user.id,
+        asProvider,
+      }));
+    } catch (error) {
+      console.error('Error loading requests:', error);
+    }
+  };
+  
+  // Function to toggle between as provider/requester
+  const handleToggleRole = (asProvider: boolean) => {
+    dispatch(setRequestsTabAsProvider(asProvider));
+  };
   
   const handleScroll = (event: any) => {
     // Make sure we have a valid event
@@ -32,7 +72,6 @@ export default function RequestsTab({ onScroll }: RequestsTabProps) {
     // Update our local animation value
     const scrollPosition = event.nativeEvent.contentOffset.y;
     // Just set the value directly
-    // We can't access the current value of scrollY directly since _value and __getValue are not recommended
     scrollY.setValue(scrollPosition);
     
     // Simply pass the event through to parent if needed
@@ -63,7 +102,12 @@ export default function RequestsTab({ onScroll }: RequestsTabProps) {
           style={styles.headerGradient}
         >
           <Text style={styles.headerTitle}>Service Requests</Text>
-          <Text style={styles.headerSubtitle}>Track and manage your service requests</Text>
+          <Text style={styles.headerSubtitle}>
+            {asProvider 
+              ? 'Manage requests from others for your services' 
+              : 'Track your service requests to other providers'
+            }
+          </Text>
         </LinearGradient>
       </BlurView>
     </Animated.View>
@@ -75,10 +119,16 @@ export default function RequestsTab({ onScroll }: RequestsTabProps) {
       {renderHeader()}
       
       {/* Filter Toggle */}
-      <RequestsFilterToggle />
+      <RequestsFilterToggle
+        asProvider={asProvider}
+        onToggle={handleToggleRole}
+      />
       
       {/* Request List */}
-      <RequestsList onScroll={handleScroll} />
+      <RequestsList 
+        onScroll={handleScroll}
+        onRefresh={loadRequests}
+      />
     </View>
   );
 }

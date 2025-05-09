@@ -7,7 +7,16 @@ import { theme } from '../../../theme';
 
 const { width } = Dimensions.get('window');
 
-export default function EmptyListingsState() {
+interface EmptyListingsStateProps {
+  onCreateListing: () => void;
+}
+
+export default function EmptyListingsState({ onCreateListing }: EmptyListingsStateProps) {
+  const handleHelpPress = () => {
+    // In a real app, this would open help documentation or a guide
+    console.log('Help button pressed');
+  };
+  
   return (
     <View style={styles.container}>
       <BlurView intensity={40} tint="light" style={styles.blurContainer}>
@@ -36,13 +45,19 @@ export default function EmptyListingsState() {
           end={{ x: 1, y: 0 }}
           style={styles.buttonGradient}
         >
-          <TouchableOpacity style={styles.button}>
+          <TouchableOpacity 
+            style={styles.button}
+            onPress={onCreateListing}
+          >
             <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>Create New Listing</Text>
           </TouchableOpacity>
         </LinearGradient>
         
-        <TouchableOpacity style={styles.helpButton}>
+        <TouchableOpacity 
+          style={styles.helpButton}
+          onPress={handleHelpPress}
+        >
           <MaterialCommunityIcons name="help-circle-outline" size={16} color={theme.colors.primary} style={styles.helpIcon} />
           <Text style={styles.helpText}>How do listings work?</Text>
         </TouchableOpacity>

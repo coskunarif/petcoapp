@@ -5,26 +5,31 @@ import {
   TouchableOpacity, 
   View, 
   Text,
-  Platform 
+  Platform,
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../../theme';
+import { ServiceListing } from '../../../types/services';
+import { servicesService } from '../../../services/servicesService';
 
 interface ListingCardProps {
-  listing: any;
+  listing: ServiceListing;
   index?: number;
+  onRefresh?: () => void;
+  onEdit?: () => void;
 }
 
-export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
+export default function ListingCard({ listing, index = 0, onRefresh, onEdit }: ListingCardProps) {
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   
   // Animation values - only use native driver compatible values
   const scale = useRef(new Animated.Value(1)).current;
   const translateY = useRef(new Animated.Value(30)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  // Remove shadowAnim since we're not using it anymore
   
   // Entrance animation
   useEffect(() => {
@@ -48,46 +53,160 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
 
   // Simplified press animations that only use native driver
   const handlePressIn = () => {
-    // Only animate scale, which can use native driver
     Animated.spring(scale, { 
       toValue: 0.98, 
       useNativeDriver: true,
       friction: 8,
     }).start();
-    
-    // Skip shadow animation since we're using static shadow
   };
   
   const handlePressOut = () => {
-    // Only animate scale, which can use native driver
     Animated.spring(scale, { 
       toValue: 1, 
       useNativeDriver: true,
       friction: 8,
     }).start();
-    
-    // Skip shadow animation since we're using static shadow
   };
   
   const toggleMenu = () => {
     setMenuVisible(!menuVisible);
   };
   
-  // No longer using animated shadow properties - removed shadowAnim interpolation
-  
-  // Get status color
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active': return theme.colors.success;
-      case 'pending': return theme.colors.warning;
-      case 'paused': return theme.colors.textTertiary;
-      default: return theme.colors.textTertiary;
+  // Get status display
+  const getStatusInfo = (isActive: boolean) => {
+    if (isActive) {
+      return {
+        label: 'Active',
+        color: theme.colors.success
+      };
+    } else {
+      return {
+        label: 'Paused',
+        color: theme.colors.textTertiary
+      };
     }
   };
 
-  // We're now using static shadow styling only
+  const statusInfo = getStatusInfo(listing.is_active);
+  
+  // Handle edit button press
+  const handleEditPress = () => {
+    // Close the menu
+    setMenuVisible(false);
+    
+    // Log the action
+    console.log('Edit pressed for listing:', listing.id);
+    
+    // If an edit handler was provided, call it
+    if (onEdit) {
+      onEdit();
+    } else {
+      // Fallback for demo purposes
+      Alert.alert(
+        'Edit Listing',
+        `Would edit listing "${listing.title}"`,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+  
+  // Handle pause/unpause button press
+  const handlePauseToggle = async () => {
+    try {
+      setIsUpdating(true);
+      setMenuVisible(false);
+      
+      // Toggle the is_active status
+      const newStatus = !listing.is_active;
+      
+      // Call the service to update the listing
+      const result = await servicesService.updateListing(listing.id, {
+        is_active: newStatus
+      });
+      
+      if (result.error) {
+        throw new Error(String(result.error));
+      }
+      
+      // Refresh the listings
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      // Show success message
+      Alert.alert(
+        'Success',
+        `Listing ${newStatus ? 'activated' : 'paused'} successfully`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error toggling listing status:', error);
+      Alert.alert(
+        'Error',
+        `Failed to update listing: ${error}`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  // Handle delete button press
+  const handleDelete = async () => {
+    try {
+      setMenuVisible(false);
+      
+      // Show confirmation dialog
+      Alert.alert(
+        'Delete Listing',
+        'Are you sure you want to delete this listing? This action cannot be undone.',
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel' 
+          },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: async () => {
+              setIsUpdating(true);
+              
+              // Delete the listing (soft delete by default)
+              const result = await servicesService.removeListing(listing.id);
+              
+              if (result.error) {
+                throw new Error(String(result.error));
+              }
+              
+              // Refresh the listings
+              if (onRefresh) {
+                onRefresh();
+              }
+              
+              // Show success message
+              Alert.alert(
+                'Success',
+                'Listing deleted successfully',
+                [{ text: 'OK' }]
+              );
+              
+              setIsUpdating(false);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error deleting listing:', error);
+      Alert.alert(
+        'Error',
+        `Failed to delete listing: ${error}`,
+        [{ text: 'OK' }]
+      );
+      setIsUpdating(false);
+    }
+  };
 
-  // Static shadow only for Android
+  // Static shadow styling only for better performance
   const platformShadow = Platform.OS === 'android' ? {
     elevation: 4,
   } : {
@@ -96,6 +215,17 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
     shadowOpacity: 0.15,
     shadowRadius: 16,
   };
+
+  // Get service type name and icon
+  const serviceTypeName = listing.service_type?.name || 'Service';
+  const serviceTypeIcon = listing.service_type?.icon || 'paw';
+  
+  // Get metrics data
+  const price = listing.price || listing.service_type?.credit_value || 30;
+  
+  // Extract rating and bookings from service stats (would normally come from API)
+  const rating = 4.8; // In a real app, calculate from reviews
+  const bookings = 14; // In a real app, get from completed requests
 
   return (
     <View style={[styles.outerContainer, platformShadow]}>
@@ -108,7 +238,6 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
               { translateY },
               { scale }
             ],
-            // No shadow properties on animated component
           }
         ]}
       >
@@ -117,6 +246,7 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
         onPressOut={handlePressOut}
         activeOpacity={1}
         style={styles.cardTouchable}
+        disabled={isUpdating}
       >
         <BlurView intensity={85} tint="light" style={styles.cardBlur}>
           <View style={styles.cardContent}>
@@ -124,36 +254,40 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
             <View style={styles.cardHeader}>
               <View style={styles.typeContainer}>
                 <LinearGradient
-                  colors={[`${listing.color || '#7FBCFF'}40`, `${listing.color || '#7FBCFF'}10`]}
+                  colors={['rgba(108, 99, 255, 0.25)', 'rgba(108, 99, 255, 0.10)']}
                   style={styles.iconContainer}
                 >
                   <MaterialCommunityIcons 
-                    name={listing.icon || "paw"} 
+                    name={serviceTypeIcon as keyof typeof MaterialCommunityIcons.glyphMap} 
                     size={16} 
-                    color={listing.color || theme.colors.primary} 
+                    color={theme.colors.primary} 
                   />
                 </LinearGradient>
-                <Text style={styles.serviceType}>{listing.type}</Text>
+                <Text style={styles.serviceType}>{serviceTypeName}</Text>
               </View>
               
               <View style={styles.headerRight}>
                 <View style={[
                   styles.statusBadge,
-                  { backgroundColor: `${getStatusColor(listing.status)}20` }
+                  { backgroundColor: `${statusInfo.color}20` }
                 ]}>
                   <View style={[
                     styles.statusDot,
-                    { backgroundColor: getStatusColor(listing.status) }
+                    { backgroundColor: statusInfo.color }
                   ]} />
                   <Text style={[
                     styles.statusText,
-                    { color: getStatusColor(listing.status) }
+                    { color: statusInfo.color }
                   ]}>
-                    {listing.status}
+                    {statusInfo.label}
                   </Text>
                 </View>
                 
-                <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
+                <TouchableOpacity 
+                  style={styles.menuButton} 
+                  onPress={toggleMenu}
+                  disabled={isUpdating}
+                >
                   <MaterialCommunityIcons 
                     name="dots-vertical" 
                     size={20} 
@@ -181,7 +315,7 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
                   size={16} 
                   color={theme.colors.primary} 
                 />
-                <Text style={styles.metricValue}>{listing.price}</Text>
+                <Text style={styles.metricValue}>{price}</Text>
                 <Text style={styles.metricLabel}>credits</Text>
               </View>
               
@@ -191,7 +325,7 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
                   size={16} 
                   color={theme.colors.primary} 
                 />
-                <Text style={styles.metricValue}>{listing.rating}</Text>
+                <Text style={styles.metricValue}>{rating}</Text>
                 <Text style={styles.metricLabel}>rating</Text>
               </View>
               
@@ -201,11 +335,15 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
                   size={16} 
                   color={theme.colors.primary} 
                 />
-                <Text style={styles.metricValue}>{listing.bookings}</Text>
+                <Text style={styles.metricValue}>{bookings}</Text>
                 <Text style={styles.metricLabel}>bookings</Text>
               </View>
               
-              <TouchableOpacity style={styles.editButton}>
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={handleEditPress}
+                disabled={isUpdating}
+              >
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             </View>
@@ -216,20 +354,64 @@ export default function ListingCard({ listing, index = 0 }: ListingCardProps) {
       {/* Menu dropdown - conditionally rendered */}
       {menuVisible && (
         <View style={styles.menuDropdown}>
-          <TouchableOpacity style={styles.menuItem}>
-            <MaterialCommunityIcons name="pencil" size={16} color={theme.colors.text} style={styles.menuIcon} />
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleEditPress}
+            disabled={isUpdating}
+          >
+            <MaterialCommunityIcons 
+              name="pencil" 
+              size={16} 
+              color={theme.colors.text} 
+              style={styles.menuIcon} 
+            />
             <Text style={styles.menuText}>Edit</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.menuItem}>
-            <MaterialCommunityIcons name="pause-circle" size={16} color={theme.colors.warning} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Pause</Text>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handlePauseToggle}
+            disabled={isUpdating}
+          >
+            <MaterialCommunityIcons 
+              name={listing.is_active ? 'pause-circle' : 'play-circle'} 
+              size={16} 
+              color={listing.is_active ? theme.colors.warning : theme.colors.success} 
+              style={styles.menuIcon} 
+            />
+            <Text style={styles.menuText}>
+              {listing.is_active ? 'Pause' : 'Activate'}
+            </Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.menuItem}>
-            <MaterialCommunityIcons name="trash-can" size={16} color={theme.colors.error} style={styles.menuIcon} />
-            <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete</Text>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleDelete}
+            disabled={isUpdating}
+          >
+            <MaterialCommunityIcons 
+              name="trash-can" 
+              size={16} 
+              color={theme.colors.error} 
+              style={styles.menuIcon} 
+            />
+            <Text style={[styles.menuText, { color: theme.colors.error }]}>
+              Delete
+            </Text>
           </TouchableOpacity>
+        </View>
+      )}
+      
+      {/* Loading indicator */}
+      {isUpdating && (
+        <View style={styles.loadingOverlay}>
+          <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+          <MaterialCommunityIcons 
+            name="sync" 
+            size={24} 
+            color={theme.colors.primary}
+            style={{ opacity: 0.8 }}
+          />
         </View>
       )}
       </Animated.View>
@@ -241,12 +423,10 @@ const styles = StyleSheet.create({
   outerContainer: {
     marginBottom: 20,
     borderRadius: 24,
-    // Shadow styling is applied programmatically via platformShadow
   },
   cardContainer: {
     borderRadius: 24,
     position: 'relative',
-    // Shadows moved to outerContainer to avoid animation conflicts
   },
   cardTouchable: {
     borderRadius: 24,
@@ -392,5 +572,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: theme.colors.text,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 24,
+    overflow: 'hidden',
+    zIndex: 20,
   },
 });

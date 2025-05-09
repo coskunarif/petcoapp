@@ -1,8 +1,14 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Animated, StatusBar, Platform } from 'react-native';
+import React, { useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Animated, StatusBar, Platform, RefreshControl, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import { fetchPetsAsync, setEditingPet } from '../../store/petsSlice';
+import { 
+  fetchPetsAsync, 
+  setEditingPet, 
+  setupPetsSubscriptionAsync,
+  removePetsSubscriptionAsync,
+  clearError
+} from '../../store/petsSlice';
 import PetsList from './PetsList.native';
 import EmptyStatePets from './EmptyStatePets.native';
 import AddPetFAB from './AddPetFAB.native';
@@ -13,7 +19,14 @@ import { theme } from '../../theme';
 
 const PetsScreen: React.FC = () => {
   const dispatch = useDispatch();
-  const { petsList, loading, error, editingPet } = useSelector((state: RootState) => state.pets);
+  const { 
+    petsList, 
+    loading, 
+    error, 
+    editingPet,
+    isSubscribed,
+    channelId
+  } = useSelector((state: RootState) => state.pets);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   
   // Animation values for header
@@ -24,16 +37,58 @@ const PetsScreen: React.FC = () => {
     extrapolate: 'clamp',
   });
 
+  // Fetch pets initially and set up real-time subscription
   useEffect(() => {
     if (userId) {
+      console.log('[PetsScreen] Fetching pets for user:', userId);
+      dispatch(fetchPetsAsync(userId) as any);
+      
+      // Only set up subscription if not already subscribed
+      if (!isSubscribed && !channelId) {
+        console.log('[PetsScreen] Setting up realtime subscription');
+        dispatch(setupPetsSubscriptionAsync(userId) as any);
+      }
+    }
+    
+    // Clean up subscription when component unmounts
+    return () => {
+      if (isSubscribed && channelId) {
+        console.log('[PetsScreen] Cleaning up realtime subscription');
+        dispatch(removePetsSubscriptionAsync() as any);
+      }
+    };
+  }, [dispatch, userId, isSubscribed, channelId]);
+
+  // Show an alert if there's an error
+  useEffect(() => {
+    if (error) {
+      Alert.alert(
+        'Error',
+        error,
+        [{ text: 'OK', onPress: () => dispatch(clearError()) }]
+      );
+    }
+  }, [error, dispatch]);
+
+  // Handle refresh (pull to refresh)
+  const handleRefresh = useCallback(() => {
+    if (userId) {
+      console.log('[PetsScreen] Refreshing pets list');
       dispatch(fetchPetsAsync(userId) as any);
     }
   }, [dispatch, userId]);
 
-  const handleAddPet = () => {
+  // Handle adding a new pet
+  const handleAddPet = useCallback(() => {
+    if (!userId) {
+      Alert.alert('Error', 'You must be logged in to add a pet');
+      return;
+    }
+    
+    console.log('[PetsScreen] Opening add pet modal');
     dispatch(setEditingPet({
-      id: '',
-      owner_id: userId || '',
+      // Don't include ID for new pets
+      owner_id: userId,
       name: '',
       species: '',
       breed: '',
@@ -43,10 +98,10 @@ const PetsScreen: React.FC = () => {
       photos: [],
       vetInfo: '',
     }));
-  };
+  }, [dispatch, userId]);
 
   // Custom PetsList wrapper that uses onScroll to animate the header
-  const PetsListWithScroll = () => {
+  const PetsListWithScroll = useCallback(() => {
     return (
       <PetsList 
         pets={petsList || []} 
@@ -54,9 +109,11 @@ const PetsScreen: React.FC = () => {
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
+        onRefresh={handleRefresh}
+        refreshing={loading}
       />
     );
-  };
+  }, [petsList, scrollY, handleRefresh, loading]);
 
   // Wrap the entire render in a try/catch to catch any rendering errors
   try {
@@ -84,16 +141,18 @@ const PetsScreen: React.FC = () => {
         {/* Page Header - Not scrolling */}
         <View style={styles.pageHeader}>
           <Text style={styles.titleText}>My Pets</Text>
+          {isSubscribed && (
+            <Text style={styles.subtitleText}>Real-time updates active</Text>
+          )}
         </View>
       
         {/* Content Area */}
         {(!userId || (loading && !petsList?.length)) ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>{!userId ? 'Loading user data...' : 'Loading pets...'}</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.contentContainer}>
-            <Text style={styles.error}>{error}</Text>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>
+              {!userId ? 'Loading user data...' : 'Loading pets...'}
+            </Text>
           </View>
         ) : (petsList?.length === 0) ? (
           <View style={styles.contentContainer}>
@@ -168,6 +227,12 @@ const styles = StyleSheet.create({
   titleText: {
     ...theme.typography.h1,
     marginBottom: 2, // Reduced bottom margin
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: theme.colors.success,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   contentContainer: {
     flex: 1,
