@@ -6,7 +6,6 @@ import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import { useSelector, useDispatch } from 'react-redux';
 import PetDetailModal from '../screens/PetsScreen/PetDetailModal.native';
-import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import { supabase } from '../supabaseClient';
 
 const Stack = createStackNavigator();
@@ -69,7 +68,6 @@ export default function RootNavigator() {
         <>
           <Stack.Screen name="Tabs" component={MainNavigator} />
           <Stack.Screen name="PetDetail" component={PetDetailModal} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />

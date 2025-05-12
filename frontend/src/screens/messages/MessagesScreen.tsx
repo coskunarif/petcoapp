@@ -23,12 +23,15 @@ import { theme } from '../../theme';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { selectUserId } from '../../redux/selectors';
 import { fetchAllUsersExcept } from '../../api/usersApi';
-import { 
-  fetchConversations, 
+import {
+  fetchConversations,
   startConversation,
   setActiveConversationAction
 } from '../../services/messagesService';
 import { setFilters } from '../../redux/messagingSlice';
+
+// Log store state to debug
+import store from '../../store';
 
 const MessagesScreen = () => {
   // Main state
@@ -39,12 +42,20 @@ const MessagesScreen = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
   
-  // Get state from Redux
-  const conversationsById = useSelector((state: any) => state.messaging.conversations.byId);
-  const conversationIds = useSelector((state: any) => state.messaging.conversations.allIds);
-  const loading = useSelector((state: any) => state.messaging.conversations.loading);
-  const error = useSelector((state: any) => state.messaging.conversations.error);
-  const filters = useSelector((state: any) => state.messaging.filters);
+  // Get state from Redux with defaults to prevent undefined errors
+  const conversationsById = useSelector((state: any) =>
+    state.messaging?.conversations?.byId || {});
+  const conversationIds = useSelector((state: any) =>
+    state.messaging?.conversations?.allIds || []);
+  const loading = useSelector((state: any) =>
+    state.messaging?.conversations?.loading || false);
+  const error = useSelector((state: any) =>
+    state.messaging?.conversations?.error || null);
+  const filters = useSelector((state: any) => state.messaging?.filters || {
+    searchTerm: '',
+    showArchived: false,
+    serviceRequestFilter: null
+  });
 
   // Memoize the conversations array to prevent unnecessary re-renders
   const conversations = useMemo(() => {
@@ -66,13 +77,35 @@ const MessagesScreen = () => {
   // Load conversations when the component mounts
   useEffect(() => {
     if (userId) {
+      // Debug: Log current Redux store state
+      console.log('[MessagesScreen] Redux store state:', store.getState());
+      console.log('[MessagesScreen] Current messaging state:', store.getState().messaging);
+      console.log('[MessagesScreen] Current conversationsById:', conversationsById);
+      console.log('[MessagesScreen] Current conversationIds:', conversationIds);
+
+      // Force refresh conversations
       loadConversations();
     }
   }, [userId]);
 
   const loadConversations = async () => {
     try {
-      await fetchConversations();
+      console.log('[MessagesScreen] Loading conversations...');
+      const result = await fetchConversations();
+      console.log('[MessagesScreen] Conversations loaded:', result.length);
+      console.log('[MessagesScreen] Redux state after load:',
+        store.getState().messaging.conversations.allIds.length);
+
+      // Force refresh of local state from Redux
+      const newConversationsById = store.getState().messaging.conversations.byId;
+      const newConversationIds = store.getState().messaging.conversations.allIds;
+
+      // If redux has conversations but component doesn't, force a re-render
+      if (newConversationIds.length > 0 && conversationIds.length === 0) {
+        console.log('[MessagesScreen] Redux has conversations but component state is empty, forcing update');
+        // Using direct dispatch to ensure messages are in both stores
+        dispatch(setConversations(result));
+      }
     } catch (error) {
       console.error('[MessagesScreen] Error loading conversations:', error);
     }

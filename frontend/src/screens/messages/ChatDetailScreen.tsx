@@ -228,9 +228,9 @@ const ChatDetailScreen = ({ route, navigation }: ChatDetailScreenProps) => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 30}
     >
       <StatusBar backgroundColor="transparent" barStyle="light-content" translucent />
       

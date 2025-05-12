@@ -141,9 +141,9 @@ const ConversationsList = ({
     }
     
     return (
-      <EmptyConversationsState 
-        message={emptyMessage} 
-        onStartConversation={() => {}} // We'll use the FAB for this
+      <EmptyConversationsState
+        message={emptyMessage}
+        // Don't pass onStartConversation to hide the button - we'll use only the FAB
       />
     );
   }

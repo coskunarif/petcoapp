@@ -95,39 +95,38 @@ export default function EditProfileScreen({ navigation }: any) {
       Alert.alert('Error', 'User ID not found');
       return;
     }
-    
+
     setUploading(true);
     setFormError('');
-    
+
     try {
-      // Convert URI to file
+      // Convert URI to file for mobile environment
       const filename = uri.split('/').pop() || 'profile-image';
-      const match = /\\.([\\w\\d]+)$/i.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image';
-      
-      // Create file object from URI
-      const formData = new FormData();
-      formData.append('file', {
-        uri,
-        name: filename,
-        type,
-      } as any);
-      
-      // Upload to Supabase Storage
-      // Note: This is a simplification - you'll need to handle the actual upload logic
-      // based on your implementation in the authService
-      const imageUrl = await uploadProfileImage(user.id, formData as any);
-      
+      const fileExtension = filename.split('.').pop() || 'jpg';
+      const mimeType = fileExtension === 'png' ? 'image/png' : 'image/jpeg';
+
+      // Create a file blob from URI
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      // Create a file object compatible with Supabase Storage
+      const file = new File([blob], filename, { type: mimeType });
+
+      // Upload directly to Supabase Storage
+      console.log(`[EditProfileScreen] Uploading profile image for user ${user.id}`);
+      const imageUrl = await uploadProfileImage(user.id, file);
+      console.log(`[EditProfileScreen] Upload successful, URL: ${imageUrl}`);
+
       // Update user profile with new image URL
       await dispatch(updateUserProfile({
         userId: user.id,
         updates: { profile_image_url: imageUrl }
       })).unwrap();
-      
+
       Alert.alert('Success', 'Profile picture updated successfully');
     } catch (error: any) {
       console.error('Error uploading image:', error);
-      setFormError(error.message || 'Failed to upload image');
+      setFormError(error.message || 'Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
     }

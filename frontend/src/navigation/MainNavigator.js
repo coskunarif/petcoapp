@@ -5,7 +5,7 @@ import HomeScreen from '../screens/HomeScreen';
 import PetsScreen from '../screens/PetsScreen';
 import ServicesScreen from '../screens/services';
 import MessagesNavigator from './MessagesNavigator';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import ProfileNavigator from './ProfileNavigator';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
 
@@ -68,9 +68,9 @@ export default function MainNavigator() {
         name="Messages" 
         component={MessagesNavigator}
       />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
+      <Tab.Screen
+        name="Profile"
+        component={ProfileNavigator}
       />
     </Tab.Navigator>
   );

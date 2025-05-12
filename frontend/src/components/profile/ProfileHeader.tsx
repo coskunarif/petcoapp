@@ -18,6 +18,9 @@ interface User {
   profile_image_url?: string;
   full_name?: string;
   email?: string;
+  credit_balance?: number;
+  rating?: number;
+  service_count?: number;
 }
 
 interface ProfileHeaderProps {
@@ -116,24 +119,24 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditProfile }) =>
           </Animated.View>
           
           {/* Stats Row */}
-          <Animated.View 
+          <Animated.View
             style={[
               styles.statsRow,
               { opacity: contentOpacity }
             ]}
           >
             <BlurView intensity={40} tint="light" style={styles.statItem}>
-              <Text style={styles.statValue}>4.8</Text>
+              <Text style={styles.statValue}>{user?.rating ? user.rating.toFixed(1) : '-'}</Text>
               <Text style={styles.statLabel}>Rating</Text>
             </BlurView>
-            
+
             <BlurView intensity={40} tint="light" style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
+              <Text style={styles.statValue}>{user?.service_count || 0}</Text>
               <Text style={styles.statLabel}>Services</Text>
             </BlurView>
-            
+
             <BlurView intensity={40} tint="light" style={styles.statItem}>
-              <Text style={styles.statValue}>$120</Text>
+              <Text style={styles.statValue}>${user?.credit_balance?.toFixed(0) || 0}</Text>
               <Text style={styles.statLabel}>Credits</Text>
             </BlurView>
           </Animated.View>

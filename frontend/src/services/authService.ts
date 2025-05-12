@@ -142,19 +142,36 @@ export async function updateUserProfile(userId: string, updates: Partial<User>) 
 /**
  * Upload user profile image
  */
-export async function uploadProfileImage(userId: string, file: File): Promise<string> {
-  const fileExt = file.name.split('.').pop();
+export async function uploadProfileImage(userId: string, file: File | Blob): Promise<string> {
+  // Determine the file extension, fallback to jpg
+  let fileExt = 'jpg';
+  if (file instanceof File && file.name) {
+    fileExt = file.name.split('.').pop() || 'jpg';
+  }
+
   const filePath = `${userId}/profile.${fileExt}`;
-  
-  const { error } = await supabase.storage
-    .from('profile-images')
-    .upload(filePath, file, { upsert: true });
-    
-  if (error) throw error;
-  
-  const { data } = supabase.storage
-    .from('profile-images')
-    .getPublicUrl(filePath);
-    
-  return data.publicUrl;
+  console.log(`[authService] Uploading profile image to ${filePath}`);
+
+  try {
+    // Upload the file to Supabase storage
+    const { error } = await supabase.storage
+      .from('profile-images')
+      .upload(filePath, file, {
+        upsert: true,
+        contentType: file instanceof File ? file.type : `image/${fileExt}`
+      });
+
+    if (error) throw error;
+
+    // Get the public URL for the uploaded file
+    const { data } = supabase.storage
+      .from('profile-images')
+      .getPublicUrl(filePath);
+
+    console.log(`[authService] Profile image uploaded successfully: ${data.publicUrl}`);
+    return data.publicUrl;
+  } catch (error) {
+    console.error('[authService] Error uploading profile image:', error);
+    throw error;
+  }
 }

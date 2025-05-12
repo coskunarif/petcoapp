@@ -72,7 +72,7 @@ const SignOutButton: React.FC<SignOutButtonProps> = ({ onSignOut }) => {
       </Animated.View>
       
       <Text style={styles.versionText}>
-        Version 1.0.0
+        Version 1.2.0
       </Text>
     </View>
   );

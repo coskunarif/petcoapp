@@ -138,6 +138,9 @@ const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: '#ffffff', // Ensure container has a background
+    position: 'relative', // Ensure it stays positioned correctly
+    zIndex: 10, // Keep it above other elements
   },
   blurContainer: {
     paddingVertical: 8,

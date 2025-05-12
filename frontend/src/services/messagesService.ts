@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
-import { store } from '../redux/store';
+// Ensure we're using the correct store
+import store from '../store';
 import { 
   setConversations, 
   setConversationsLoading, 
@@ -48,9 +49,11 @@ export const fetchConversations = async () => {
   if (!userId) throw new Error('User not authenticated');
 
   try {
+    console.log('[messagesService.fetchConversations] Starting fetch for userId:', userId);
     store.dispatch(setConversationsLoading(true));
-    
+
     // Get messages where user is sender or recipient
+    console.log('[messagesService.fetchConversations] Querying Supabase messages table');
     const { data, error } = await supabase
       .from('messages')
       .select(`
@@ -67,8 +70,13 @@ export const fetchConversations = async () => {
       `)
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .order('created_at', { ascending: false });
-      
-    if (error) throw error;
+
+    if (error) {
+      console.error('[messagesService.fetchConversations] Supabase error:', error);
+      throw error;
+    }
+
+    console.log('[messagesService.fetchConversations] Received data count:', data?.length || 0);
     
     // Group by conversation partner and get latest message
     const conversationMap = new Map<string, Conversation>();
@@ -162,9 +170,14 @@ export const fetchConversations = async () => {
     });
     
     // Update Redux store
+    console.log('[messagesService.fetchConversations] Dispatching conversations to store:', conversations.length);
     store.dispatch(setConversations(conversations));
     store.dispatch(setConversationsError(null));
-    
+
+    // Log redux state after update
+    console.log('[messagesService.fetchConversations] Redux state after update:',
+      store.getState().messaging.conversations.allIds.length);
+
     return conversations;
   } catch (error: any) {
     console.error('[messagesService] Error fetching conversations:', error);

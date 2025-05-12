@@ -80,17 +80,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     }).start();
   };
 
-  // Navigation handlers for various settings screens
-  const navigateToPersonalInfo = () => navigation.navigate('PersonalInfo');
-  const navigateToPaymentMethods = () => navigation.navigate('PaymentMethods');
-  const navigateToNotifications = () => navigation.navigate('NotificationSettings');
-  const navigateToPrivacy = () => navigation.navigate('PrivacySettings');
-  const navigateToLocation = () => navigation.navigate('LocationSettings');
-  const navigateToLanguage = () => navigation.navigate('LanguageSettings');
-  const navigateToAppearance = () => navigation.navigate('AppearanceSettings');
-  const navigateToHelp = () => navigation.navigate('HelpCenter');
-  const navigateToAbout = () => navigation.navigate('About');
-  const navigateToEditProfile = () => navigation.navigate('EditProfile');
+  // We'll use direct navigation now since we don't need the separate functions
 
   return (
     <View style={styles.container}>
@@ -134,19 +124,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </View>
 
         {/* Profile header with user info and stats */}
-        <ProfileHeader 
-          user={user} 
-          onEditProfile={navigateToEditProfile} 
+        <ProfileHeader
+          user={user}
+          onEditProfile={() => navigation.navigate('EditProfile')}
         />
 
         {/* Account Settings Section */}
         <SettingsSection
           title="Account Settings"
           items={[
-            { icon: 'account-outline', title: 'Personal Information', onPress: navigateToPersonalInfo },
-            { icon: 'credit-card-outline', title: 'Payment Methods', onPress: navigateToPaymentMethods },
-            { icon: 'bell-outline', title: 'Notifications', onPress: navigateToNotifications },
-            { icon: 'shield-outline', title: 'Privacy & Security', onPress: navigateToPrivacy }
+            { icon: 'account-outline', title: 'Personal Information', onPress: () => navigation.navigate('PersonalInfo') },
+            { icon: 'credit-card-outline', title: 'Payment Methods', onPress: () => navigation.navigate('PaymentMethods') },
+            { icon: 'bell-outline', title: 'Notifications', onPress: () => navigation.navigate('NotificationSettings') },
+            { icon: 'shield-outline', title: 'Privacy & Security', onPress: () => navigation.navigate('PrivacySettings') }
           ]}
         />
 
@@ -154,9 +144,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <SettingsSection
           title="Preferences"
           items={[
-            { icon: 'map-marker-outline', title: 'Location Settings', onPress: navigateToLocation },
-            { icon: 'translate', title: 'Language', onPress: navigateToLanguage },
-            { icon: 'theme-light-dark', title: 'Appearance', onPress: navigateToAppearance }
+            { icon: 'map-marker-outline', title: 'Location Settings', onPress: () => navigation.navigate('LocationSettings') },
+            { icon: 'translate', title: 'Language', onPress: () => navigation.navigate('LanguageSettings') },
+            { icon: 'theme-light-dark', title: 'Appearance', onPress: () => navigation.navigate('AppearanceSettings') }
           ]}
         />
 
@@ -164,8 +154,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <SettingsSection
           title="Support"
           items={[
-            { icon: 'help-circle-outline', title: 'Help Center', onPress: navigateToHelp },
-            { icon: 'information-outline', title: 'About', onPress: navigateToAbout }
+            { icon: 'help-circle-outline', title: 'Help Center', onPress: () => navigation.navigate('HelpCenter') },
+            { icon: 'information-outline', title: 'About', onPress: () => navigation.navigate('About') }
           ]}
         />
 
