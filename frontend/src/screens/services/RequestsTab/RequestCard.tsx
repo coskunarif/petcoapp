@@ -475,10 +475,10 @@ export default function RequestCard({ request, index = 0, onRefresh }: RequestCa
       
       {/* Detail Modal */}
       {request && (
-        <RequestDetailModal 
-          visible={modalVisible} 
-          onDismiss={() => setModalVisible(false)} 
-          request={request} 
+        <RequestDetailModal
+          visible={modalVisible}
+          onDismiss={() => setModalVisible(false)}
+          requestId={request.id}
         />
       )}
     </>

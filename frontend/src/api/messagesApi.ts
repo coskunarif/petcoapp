@@ -6,11 +6,11 @@ export const fetchConversations = async (userId: string) => {
   return data;
 };
 
-export const fetchMessages = async (conversationId: string, cursor: string | null = null, limit = 20) => {
+export const fetchMessages = async (userId: string, otherUserId: string, cursor: string | null = null, limit = 20) => {
   let query = supabase
     .from('messages')
     .select('*')
-    .eq('conversation_id', conversationId)
+    .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (cursor) {

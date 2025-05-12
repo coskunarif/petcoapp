@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import PetsScreen from '../screens/PetsScreen';
 import ServicesScreen from '../screens/services';
-import MessagesScreen from '../screens/messages/MessagesScreen';
+import MessagesNavigator from './MessagesNavigator';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -66,7 +66,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Messages" 
-        component={MessagesScreen}
+        component={MessagesNavigator}
       />
       <Tab.Screen 
         name="Profile" 

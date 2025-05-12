@@ -1,33 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   View, 
   TextInput, 
   StyleSheet, 
-  TouchableOpacity 
+  TouchableOpacity,
+  Platform
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 
 interface SearchBarProps {
-  onSearch?: (text: string) => void;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
 }
 
-const SearchBar = ({ onSearch }: SearchBarProps) => {
-  const [searchText, setSearchText] = useState('');
-  
-  const handleChangeText = (text: string) => {
-    setSearchText(text);
-    if (onSearch) {
-      onSearch(text);
-    }
-  };
-  
+const SearchBar = ({ value, onChangeText, placeholder = "Search conversations..." }: SearchBarProps) => {
   const handleClear = () => {
-    setSearchText('');
-    if (onSearch) {
-      onSearch('');
-    }
+    onChangeText('');
   };
   
   return (
@@ -41,16 +32,20 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
         />
         
         <TextInput
-          placeholder="Search conversations..."
+          placeholder={placeholder}
           placeholderTextColor={theme.colors.textTertiary}
-          value={searchText}
-          onChangeText={handleChangeText}
+          value={value}
+          onChangeText={onChangeText}
           style={styles.input}
           returnKeyType="search"
         />
         
-        {searchText.length > 0 && (
-          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+        {value.length > 0 && (
+          <TouchableOpacity 
+            onPress={handleClear} 
+            style={styles.clearButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}  
+          >
             <MaterialCommunityIcons
               name="close-circle"
               size={18}
@@ -67,6 +62,17 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: theme.spacing.md,
     marginVertical: theme.spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgba(0,0,0,0.1)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   searchContainer: {
     flexDirection: 'row',

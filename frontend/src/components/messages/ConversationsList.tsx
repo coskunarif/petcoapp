@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -6,116 +6,81 @@ import {
   FlatList, 
   ActivityIndicator, 
   StyleSheet,
-  RefreshControl
+  RefreshControl,
+  TouchableOpacity
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSelector } from 'react-redux';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ConversationCard from './ConversationCard';
 import EmptyConversationsState from './EmptyConversationsState';
 import { theme } from '../../theme';
 import { Conversation } from './types';
 
-// Example conversation data for development
-const EXAMPLE_CONVERSATIONS = [
-  {
-    id: '1',
-    otherUser: { id: 'user1', name: 'John Smith' },
-    lastMessage: 'How\'s the dog doing today?',
-    lastMessageTime: '10:30 AM',
-    unread: true,
-    type: 'pet_sitting',
-    icon: 'dog',
-    color: '#6C63FF',
-  },
-  {
-    id: '2',
-    otherUser: { id: 'user2', name: 'Emma Wilson' },
-    lastMessage: 'I\'ll bring the treats next time',
-    lastMessageTime: 'Yesterday',
-    unread: false,
-    type: 'grooming',
-    icon: 'scissors-cutting',
-    color: '#48C6EF',
-  },
-  {
-    id: '3',
-    otherUser: { id: 'user3', name: 'Michael Chen' },
-    lastMessage: 'Your dog is so well-behaved!',
-    lastMessageTime: '2 days ago',
-    unread: false, 
-    type: 'walking',
-    icon: 'walk',
-    color: '#FFA726',
-  }
-];
-
-
 interface ConversationsListProps {
+  conversations: Conversation[];
+  loading: boolean;
+  error: string | null;
+  filters: {
+    searchTerm: string;
+    showArchived: boolean;
+    serviceRequestFilter: string | null;
+  };
   onScroll?: (event: { nativeEvent: { contentOffset: { y: number } } }) => void;
+  onRefresh?: () => void;
+  onSelect?: (conversation: Conversation) => void;
 }
 
-const ConversationsList = ({ onScroll }: ConversationsListProps) => {
+const ConversationsList = ({ 
+  conversations = [], 
+  loading = false, 
+  error = null,
+  filters = { searchTerm: '', showArchived: false, serviceRequestFilter: null },
+  onScroll, 
+  onRefresh,
+  onSelect
+}: ConversationsListProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [conversations, setConversationsState] = useState<Conversation[]>(EXAMPLE_CONVERSATIONS);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
-  // Note: We're using a regular FlatList instead of an animated one for simplicity
+  // Filter conversations
+  const filteredConversations = conversations.filter(conversation => {
+    // Filter by search term
+    if (filters.searchTerm && !conversation.otherUser.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
+      return false;
+    }
+    
+    // Filter by service type
+    if (filters.serviceRequestFilter && conversation.type !== filters.serviceRequestFilter) {
+      return false;
+    }
+    
+    // Filter by archived status (not implemented yet)
+    if (filters.showArchived) {
+      // Show both archived and non-archived
+      return true;
+    } else {
+      // Only show non-archived
+      return !conversation.archived;
+    }
+  });
   
-  // For development purposes: simulate loading and fetching
-  const onRefresh = async () => {
+  // Pull to refresh
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    
     try {
       setIsRefreshing(true);
-      // Simulate a network request
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Randomize if we show the empty state (20% chance)
-      const shouldShowEmpty = Math.random() < 0.2;
-      
-      if (shouldShowEmpty) {
-        setConversationsState([]);
-      } else {
-        // Shuffle the example conversations
-        setConversationsState([...EXAMPLE_CONVERSATIONS].sort(() => Math.random() - 0.5));
-      }
-      
-    } catch (err) {
-      console.error('[ConversationsList] Error refreshing: ', err);
-      setError('Could not refresh conversations');
+      await onRefresh();
     } finally {
       setIsRefreshing(false);
     }
   };
   
-  // In a real app, we'd fetch conversations from an API
-  useEffect(() => {
-    async function loadConversations() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Simulate network request
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // For development: show conversations 80% of the time, empty state 20%
-        const shouldShowEmpty = Math.random() < 0.2;
-        
-        if (shouldShowEmpty) {
-          setConversationsState([]);
-        } else {
-          setConversationsState(EXAMPLE_CONVERSATIONS);
-        }
-      } catch (err) {
-        console.error('[ConversationsList] Error loading: ', err);
-        setError('Could not load conversations');
-      } finally {
-        setLoading(false);
-      }
+  // Handle selecting a conversation
+  const handleSelectConversation = (conversation: Conversation) => {
+    if (onSelect) {
+      onSelect(conversation);
     }
-    
-    loadConversations();
-  }, []);
+  };
   
   // Handle scroll events to enable animations in parent components
   const handleScroll = (event: any) => {
@@ -132,7 +97,7 @@ const ConversationsList = ({ onScroll }: ConversationsListProps) => {
   };
   
   // Display loading state
-  if (loading) {
+  if (loading && !isRefreshing && filteredConversations.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -146,27 +111,53 @@ const ConversationsList = ({ onScroll }: ConversationsListProps) => {
     return (
       <View style={styles.errorContainer}>
         <BlurView intensity={60} style={styles.errorBlur} tint="light">
+          <MaterialCommunityIcons 
+            name="alert-circle-outline" 
+            size={36} 
+            color={theme.colors.error} 
+          />
           <Text style={styles.errorText}>{error}</Text>
           <Text style={styles.errorSubtext}>Pull down to try again</Text>
+          
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={handleRefresh}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
         </BlurView>
       </View>
     );
   }
   
   // Display empty state if no conversations
-  if (conversations.length === 0) {
-    return <EmptyConversationsState />;
+  if (filteredConversations.length === 0) {
+    // Different empty state messaging based on filters
+    let emptyMessage = "No conversations yet";
+    if (filters.searchTerm) {
+      emptyMessage = `No conversations found for "${filters.searchTerm}"`;
+    } else if (filters.serviceRequestFilter) {
+      emptyMessage = `No ${filters.serviceRequestFilter} conversations found`;
+    }
+    
+    return (
+      <EmptyConversationsState 
+        message={emptyMessage} 
+        onStartConversation={() => {}} // We'll use the FAB for this
+      />
+    );
   }
   
   // Display conversations list
   return (
     <FlatList
-      data={conversations}
+      data={filteredConversations}
       keyExtractor={(item: Conversation) => item.id}
       renderItem={({ item, index }) => (
         <ConversationCard 
           conversation={item} 
           index={index}
+          onPress={() => handleSelectConversation(item)}
         />
       )}
       contentContainerStyle={styles.listContent}
@@ -175,7 +166,7 @@ const ConversationsList = ({ onScroll }: ConversationsListProps) => {
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
-          onRefresh={onRefresh}
+          onRefresh={handleRefresh}
           colors={[theme.colors.primary]}
           tintColor={theme.colors.primary}
           progressBackgroundColor="#ffffff"
@@ -216,19 +207,35 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     width: '90%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   errorText: {
     fontSize: 18,
     fontWeight: '600',
     color: theme.colors.error,
     textAlign: 'center',
+    marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
   },
   errorSubtext: {
     fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+    marginBottom: theme.spacing.md,
   },
+  retryButton: {
+    backgroundColor: theme.colors.primaryLight,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    marginTop: theme.spacing.sm,
+  },
+  retryText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+    fontSize: 14,
+  }
 });
 
 export default ConversationsList;

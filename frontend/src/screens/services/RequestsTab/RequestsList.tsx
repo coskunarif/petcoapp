@@ -191,7 +191,11 @@ export default function RequestsList({ onScroll, onRefresh }: RequestsListProps)
         data={filteredRequests}
         keyExtractor={item => item.id}
         renderItem={({ item, index }) => (
-          <RequestCard request={item} index={index} />
+          <RequestCard
+            request={item}
+            index={index}
+            onRefresh={handleRefresh}
+          />
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}

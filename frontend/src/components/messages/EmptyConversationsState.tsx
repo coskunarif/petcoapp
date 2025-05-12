@@ -3,13 +3,17 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme, globalStyles } from '../../theme';
+import { theme } from '../../theme';
 
 interface EmptyConversationsStateProps {
   onStartConversation?: () => void;
+  message?: string;
 }
 
-const EmptyConversationsState = ({ onStartConversation }: EmptyConversationsStateProps) => (
+const EmptyConversationsState: React.FC<EmptyConversationsStateProps> = ({ 
+  onStartConversation,
+  message = "No Conversations Yet" 
+}) => (
   <View style={styles.container}>
     <BlurView intensity={60} style={styles.blurContainer} tint="light">
       <View style={styles.iconContainer}>
@@ -25,7 +29,7 @@ const EmptyConversationsState = ({ onStartConversation }: EmptyConversationsStat
         </LinearGradient>
       </View>
       
-      <Text style={styles.title}>No Conversations Yet</Text>
+      <Text style={styles.title}>{message}</Text>
       
       <Text style={styles.message}>
         Start a new conversation with a pet owner or service provider
@@ -66,7 +70,6 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.8)',
-    ...theme.elevation.small,
   },
   iconContainer: {
     marginBottom: theme.spacing.md,
@@ -84,6 +87,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.sm,
     letterSpacing: 0.3,
+    textAlign: 'center',
   },
   message: {
     fontSize: 16,
@@ -97,7 +101,6 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: theme.borderRadius.medium,
     overflow: 'hidden',
-    ...theme.elevation.small,
   },
   buttonGradient: {
     paddingVertical: 14,

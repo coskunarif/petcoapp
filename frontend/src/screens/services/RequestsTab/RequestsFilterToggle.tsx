@@ -12,8 +12,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../../theme';
 
-const { width } = Dimensions.get('window');
-const isMobile = width < 600;
+const { width: screenWidth } = Dimensions.get('window');
+const width = Math.min(screenWidth, 600); // Cap the width for large screens
+const isMobile = screenWidth < 600;
 
 interface RequestsFilterToggleProps {
   asProvider: boolean;
@@ -24,7 +25,12 @@ export default function RequestsFilterToggle({ asProvider, onToggle }: RequestsF
   // Animation references
   const slideAnim = useRef(new Animated.Value(asProvider ? 0 : 1)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  
+
+  // Effect to ensure slideAnim value is in sync with asProvider prop on mount
+  useEffect(() => {
+    slideAnim.setValue(asProvider ? 0 : 1);
+  }, []);
+
   useEffect(() => {
     // Initial entrance animation
     Animated.timing(opacityAnim, {
@@ -35,19 +41,24 @@ export default function RequestsFilterToggle({ asProvider, onToggle }: RequestsF
   }, []);
   
   useEffect(() => {
-    // Animate slider when selection changes
+    // Set initial position immediately to avoid flicker on first render
+    slideAnim.setValue(asProvider ? 0 : 1);
+
+    // Animate slider when selection changes (smoother animation)
     Animated.spring(slideAnim, {
       toValue: asProvider ? 0 : 1,
-      friction: 8,
-      tension: 80,
+      friction: 10,
+      tension: 100,
       useNativeDriver: true,
     }).start();
   }, [asProvider]);
   
   // Calculate the position of the active slider
+  // Use the actual width instead of a fixed value
+  const buttonWidth = (width - 32) / 2;
   const sliderPosition = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 50], // Adjust based on the width of your buttons
+    outputRange: [0, buttonWidth], // Use actual button width
   });
   
   return (
@@ -55,19 +66,23 @@ export default function RequestsFilterToggle({ asProvider, onToggle }: RequestsF
       <BlurView intensity={25} tint="light" style={styles.blurContainer}>
         <View style={styles.toggleContainer}>
           {/* Active Indicator */}
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.activeIndicator, 
-              { 
+              styles.activeIndicator,
+              {
                 transform: [{ translateX: sliderPosition }],
-                width: styles.tabContainer.width,
+                width: buttonWidth, // Use calculated buttonWidth
               }
             ]}
           />
           
           {/* Toggle Buttons */}
-          <TouchableOpacity 
-            style={[styles.tabContainer, styles.leftTab]} 
+          <TouchableOpacity
+            style={[
+              styles.tabContainer,
+              styles.leftTab,
+              { width: buttonWidth }
+            ]}
             onPress={() => onToggle(true)}
             activeOpacity={0.7}
           >
@@ -85,8 +100,12 @@ export default function RequestsFilterToggle({ asProvider, onToggle }: RequestsF
             </Text>
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={[styles.tabContainer, styles.rightTab]} 
+          <TouchableOpacity
+            style={[
+              styles.tabContainer,
+              styles.rightTab,
+              { width: buttonWidth }
+            ]}
             onPress={() => onToggle(false)}
             activeOpacity={0.7}
           >
@@ -131,7 +150,7 @@ const styles = StyleSheet.create({
   activeIndicator: {
     position: 'absolute',
     height: '100%',
-    width: width / 2 - 32,
+    // Width is set dynamically in the component
     backgroundColor: theme.colors.primary,
     borderRadius: 16,
     ...theme.elevation.small,
@@ -142,7 +161,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 10,
-    width: (width - 32) / 2,
+    // Width is calculated in the component
     zIndex: 2,
   },
   leftTab: {

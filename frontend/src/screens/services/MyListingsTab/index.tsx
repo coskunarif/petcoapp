@@ -123,8 +123,21 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
   // Function to refresh listings
   const refreshListings = async () => {
     setRefreshing(true);
-    await fetchUserListings();
-    setRefreshing(false);
+    try {
+      console.log('[MyListingsTab] Refreshing listings');
+      if (!user?.id) {
+        console.warn('[MyListingsTab] Cannot refresh - no user ID');
+        return;
+      }
+
+      // Force fresh fetch from API
+      await dispatch(fetchServiceListings({ provider_id: user.id }));
+      console.log('[MyListingsTab] Listings refreshed');
+    } catch (error) {
+      console.error('[MyListingsTab] Error refreshing listings:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Function to open the service form modal for creating a new listing
@@ -135,8 +148,33 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
 
   // Function to open the service form modal for editing an existing listing
   const handleEditListing = (listing: ServiceListing) => {
-    setSelectedListing(listing);
+    console.log('[MyListingsTab] Edit listing requested for:', listing);
+    console.log('[MyListingsTab] Listing ID:', listing.id);
+
+    // Extract scheduled date from availability_schedule if available
+    let scheduledDate = new Date().toISOString();
+    if (listing.availability_schedule?.scheduled_date) {
+      scheduledDate = listing.availability_schedule.scheduled_date;
+    }
+
+    // Store the listing in component state to avoid dependency on Redux store
+    setSelectedListing({
+      ...listing,
+      // Ensure we have the fields needed for the form
+      title: listing.title || '',
+      description: listing.description || '',
+      service_type_id: listing.service_type_id || serviceTypes[0]?.id || '',
+      // Store scheduled date in both places for compatibility
+      scheduled_date: scheduledDate
+    });
+
+    // Show the form immediately without waiting for refresh
     setServiceFormVisible(true);
+
+    // Refresh listings in the background to get latest data
+    refreshListings().catch(error => {
+      console.error('[MyListingsTab] Error refreshing listings during edit:', error);
+    });
   };
 
   // Function to handle service form submission
@@ -146,7 +184,39 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
         console.warn('Cannot create/update listing - user not authenticated');
         return;
       }
-      
+
+      // Log the received form data
+      console.log('[MyListingsTab] Service form submitted with data:', formData);
+
+      // Set up availability data based on the date if provided
+      let availabilitySchedule = {
+        days: [],
+        hours: '',
+        notes: ''
+      };
+
+      // If date was provided, use it for availability information
+      if (formData.date) {
+        const date = new Date(formData.date);
+        // Get day of week from date
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayOfWeek = daysOfWeek[date.getDay()];
+
+        // Format date for availability notes
+        const formattedDate = date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        availabilitySchedule = {
+          days: [dayOfWeek],
+          hours: `${date.getHours()}:00 - ${date.getHours() + 2}:00`, // Default 2-hour window
+          notes: `Available on ${formattedDate}`
+        };
+      }
+
       // Transform the form data to match ServiceListing structure
       const serviceData: Omit<ServiceListing, 'id' | 'created_at'> = {
         title: formData.title,
@@ -154,18 +224,22 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
         description: formData.description,
         provider_id: user.id,
         is_active: true,
-        // Use the availability_schedule from form data if available
-        availability_schedule: formData.availability_schedule || {
-          days: [],
-          hours: '',
-          notes: ''
-        }
+        // Don't include start_time as it doesn't exist in the database
+        // Use the enhanced availability schedule that contains the date info
+        availability_schedule: formData.availability_schedule || availabilitySchedule
       };
       
       if (selectedListing) {
         // Update existing listing
-        const result = await servicesService.updateListing(selectedListing.id, serviceData);
-        
+        console.log('[MyListingsTab] Updating listing with ID:', selectedListing.id);
+
+        // Add debugging to see what fields are coming from the form
+        const { start_time, ...clearedServiceData } = serviceData as any;
+
+        console.log('[MyListingsTab] Cleaned service data (removed start_time):', clearedServiceData);
+
+        const result = await servicesService.updateListing(selectedListing.id, clearedServiceData);
+
         if (result.error) {
           console.error('Error updating listing:', result.error);
         } else {
@@ -264,11 +338,18 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
         initialValues={selectedListing ? {
           title: selectedListing.title,
           service_type_id: selectedListing.service_type_id,
-          description: selectedListing.description
-        } : undefined}
+          description: selectedListing.description,
+          date: selectedListing.scheduled_date || (selectedListing.availability_schedule?.scheduled_date) || new Date().toISOString() // Include date for consistency
+        } : {
+          // Default values for new listing
+          title: '',
+          service_type_id: serviceTypes?.[0]?.id || '',
+          description: '',
+          date: new Date().toISOString()
+        }}
         mode={selectedListing ? 'edit' : 'create'}
         showTitle={true}
-        showDate={false}
+        showDate={true} // Changed to true for consistency with HomeScreen
       />
       
       {/* Content Section */}

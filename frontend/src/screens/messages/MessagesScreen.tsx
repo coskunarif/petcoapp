@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   TouchableOpacity, 
   Text, 
@@ -7,22 +7,28 @@ import {
   SafeAreaView, 
   Animated, 
   ActivityIndicator,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
 import NewConversationModal from '../../components/messages/NewConversationModal';
 import ConversationsList from '../../components/messages/ConversationsList';
 import SearchBar from '../../components/messages/SearchBar';
 import ConversationFilters from '../../components/messages/ConversationFilters';
-import { theme, globalStyles } from '../../theme';
+import { theme } from '../../theme';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
-
-import { useSelector } from 'react-redux';
 import { selectUserId } from '../../redux/selectors';
 import { fetchAllUsersExcept } from '../../api/usersApi';
-import { useEffect } from 'react';
+import { 
+  fetchConversations, 
+  startConversation,
+  setActiveConversationAction
+} from '../../services/messagesService';
+import { setFilters } from '../../redux/messagingSlice';
 
 const MessagesScreen = () => {
   // Main state
@@ -30,6 +36,20 @@ const MessagesScreen = () => {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const userId = useSelector(selectUserId);
+  const dispatch = useDispatch();
+  const navigation = useNavigation();
+  
+  // Get state from Redux
+  const conversationsById = useSelector((state: any) => state.messaging.conversations.byId);
+  const conversationIds = useSelector((state: any) => state.messaging.conversations.allIds);
+  const loading = useSelector((state: any) => state.messaging.conversations.loading);
+  const error = useSelector((state: any) => state.messaging.conversations.error);
+  const filters = useSelector((state: any) => state.messaging.filters);
+
+  // Memoize the conversations array to prevent unnecessary re-renders
+  const conversations = useMemo(() => {
+    return conversationIds.map((id: string) => conversationsById[id]);
+  }, [conversationIds, conversationsById]);
 
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -42,6 +62,21 @@ const MessagesScreen = () => {
     outputRange: [0, 0.3, 1],
     extrapolate: 'clamp',
   });
+
+  // Load conversations when the component mounts
+  useEffect(() => {
+    if (userId) {
+      loadConversations();
+    }
+  }, [userId]);
+
+  const loadConversations = async () => {
+    try {
+      await fetchConversations();
+    } catch (error) {
+      console.error('[MessagesScreen] Error loading conversations:', error);
+    }
+  };
 
   // Handle scroll events to trigger animations
   const handleScroll = (event: any) => {
@@ -91,10 +126,51 @@ const MessagesScreen = () => {
       .finally(() => setLoadingUsers(false));
   }, [modalOpen, userId]);
 
-  const handleStartConversation = (otherUserId: string) => {
+  // Handle search filter changes
+  const handleSearchChange = (text: string) => {
+    dispatch(setFilters({ searchTerm: text }));
+  };
+
+  // Handle filter changes (archived, service type)
+  const handleFilterChange = (filterType: 'showArchived' | 'serviceRequestFilter', value: boolean | string | null) => {
+    dispatch(setFilters({ [filterType]: value }));
+  };
+
+  // Start a new conversation
+  const handleStartConversation = async (otherUserId: string) => {
     setModalOpen(false);
-    // TODO: Implement actual conversation creation and navigation
-    alert('Start conversation with user ID: ' + otherUserId);
+    
+    try {
+      // Send the first message to start the conversation
+      const conversationId = await startConversation(otherUserId, "Hello! 👋");
+      
+      if (conversationId) {
+        // Find the user info from our list
+        const otherUser = users.find(u => u.id === otherUserId);
+        
+        // Navigate to chat detail screen
+        navigation.navigate('ChatDetail' as never, {
+          conversationId,
+          otherUserId,
+          otherUserName: otherUser?.name || 'User'
+        } as never);
+      }
+    } catch (error) {
+      console.error('[MessagesScreen] Error starting conversation:', error);
+    }
+  };
+
+  // Navigate to chat detail screen when a conversation is selected
+  const handleConversationSelect = (conversation: any) => {
+    // Set the active conversation in Redux
+    setActiveConversationAction(conversation.id);
+    
+    // Navigate to the chat detail screen
+    navigation.navigate('ChatDetail' as never, {
+      conversationId: conversation.id,
+      otherUserId: conversation.otherUser.id,
+      otherUserName: conversation.otherUser.name
+    } as never);
   };
 
   return (
@@ -136,12 +212,24 @@ const MessagesScreen = () => {
 
           {/* SearchBar and Filters */}
           <View style={styles.searchFilterContainer}>
-            <SearchBar />
-            <ConversationFilters />
+            <SearchBar value={filters.searchTerm} onChangeText={handleSearchChange} />
+            <ConversationFilters 
+              showArchived={filters.showArchived}
+              serviceFilter={filters.serviceRequestFilter}
+              onFilterChange={handleFilterChange}
+            />
           </View>
 
           {/* Conversations List */}
-          <ConversationsList onScroll={handleScroll} />
+          <ConversationsList 
+            conversations={conversations}
+            loading={loading}
+            error={error}
+            onScroll={handleScroll}
+            onRefresh={loadConversations}
+            onSelect={handleConversationSelect}
+            filters={filters}
+          />
         </SafeAreaView>
 
         {/* Loading Indicator for User Fetch */}
@@ -214,7 +302,17 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   fixedHeaderInner: {
-    ...theme.elevation.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     overflow: 'hidden',
@@ -277,7 +375,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    ...theme.elevation.small,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   loadingText: {
     marginLeft: 8,
@@ -290,7 +398,17 @@ const styles = StyleSheet.create({
     bottom: 32,
     right: 24,
     zIndex: 1001,
-    ...theme.elevation.large,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   fab: {
     borderRadius: 28,
@@ -305,11 +423,6 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 32,
-    lineHeight: 36,
   },
 });
 

@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient';
-import { Service, ServiceRequest, ServiceListing } from '../types/services';
+import { ServiceListing, ServiceRequest, ServiceType } from '../types/services';
 
 /**
  * Fetch service listings with optional filters
@@ -84,16 +84,57 @@ export async function fetchServices({
  */
 export async function createServiceListing(listing: Omit<ServiceListing, 'id' | 'created_at'>) {
   try {
+    console.log('[createServiceListing] Creating listing with data:', listing);
+
+    // Prepare listing data for database format
+    // Handle known fields and ensure other fields are passed through
+    const { start_time, end_time, scheduled_date, availability_schedule, ...otherFields } = listing;
+
+    console.log('[createServiceListing] Handling deprecated start_time/end_time fields:', {
+      start_time_exists: !!start_time,
+      end_time_exists: !!end_time,
+      scheduled_date_exists: !!scheduled_date
+    });
+
+    // Store date information in availability_schedule instead of a separate column
+    let enhancedAvailabilitySchedule = availability_schedule || {
+      days: [],
+      hours: '',
+      notes: ''
+    };
+
+    // Add date information to availability_schedule notes if available
+    if (start_time || scheduled_date) {
+      const dateStr = new Date(start_time || scheduled_date || '').toLocaleString();
+      enhancedAvailabilitySchedule = {
+        ...enhancedAvailabilitySchedule,
+        scheduled_date: start_time || scheduled_date,
+        notes: enhancedAvailabilitySchedule.notes
+          ? `${enhancedAvailabilitySchedule.notes}\nScheduled: ${dateStr}`
+          : `Scheduled: ${dateStr}`
+      };
+    }
+
+    const dataToInsert = {
+      ...otherFields,
+      availability_schedule: enhancedAvailabilitySchedule,
+      created_at: new Date().toISOString(),
+      is_active: true
+    };
+
+    console.log('[createServiceListing] Prepared data for insert:', dataToInsert);
+
     const { data, error } = await supabase
       .from('service_listings')
-      .insert([{
-        ...listing,
-        created_at: new Date().toISOString(),
-        is_active: true
-      }])
+      .insert([dataToInsert])
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[createServiceListing] Supabase error:', error);
+      throw error;
+    }
+
+    console.log('[createServiceListing] Successfully created with result:', data);
     return { data, error: null };
   } catch (error) {
     console.error('[createServiceListing] Error:', error);
@@ -105,17 +146,66 @@ export async function createServiceListing(listing: Omit<ServiceListing, 'id' | 
  * Update an existing service listing
  */
 export async function updateServiceListing(
-  id: string, 
+  id: string,
   updates: Partial<Omit<ServiceListing, 'id' | 'created_at'>>
 ) {
   try {
+    console.log('[updateServiceListing] Updating listing with id:', id);
+    console.log('[updateServiceListing] With updates:', updates);
+
+    // Prepare updates data for database format
+    // Handle known fields and ensure other fields are passed through
+    const { start_time, end_time, scheduled_date, availability_schedule, ...otherFields } = updates;
+
+    console.log('[updateServiceListing] Handling deprecated start_time/end_time fields:', {
+      start_time_exists: !!start_time,
+      end_time_exists: !!end_time,
+      scheduled_date_exists: !!scheduled_date
+    });
+
+    let dataToUpdate: any = {
+      ...otherFields
+      // Don't add updated_at as it doesn't exist in the database schema
+    };
+
+    // If we have date information, store it in availability_schedule
+    if (start_time || scheduled_date || availability_schedule) {
+      // Get existing availability_schedule if we're updating it
+      let enhancedAvailabilitySchedule = availability_schedule || {
+        days: [],
+        hours: '',
+        notes: ''
+      };
+
+      // Add date information to availability_schedule if available
+      if (start_time || scheduled_date) {
+        const dateStr = new Date(start_time || scheduled_date || '').toLocaleString();
+        enhancedAvailabilitySchedule = {
+          ...enhancedAvailabilitySchedule,
+          scheduled_date: start_time || scheduled_date,
+          notes: enhancedAvailabilitySchedule.notes
+            ? `${enhancedAvailabilitySchedule.notes}\nScheduled: ${dateStr}`
+            : `Scheduled: ${dateStr}`
+        };
+      }
+
+      dataToUpdate.availability_schedule = enhancedAvailabilitySchedule;
+    }
+
+    console.log('[updateServiceListing] Prepared data for update:', dataToUpdate);
+
     const { data, error } = await supabase
       .from('service_listings')
-      .update(updates)
+      .update(dataToUpdate)
       .eq('id', id)
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[updateServiceListing] Supabase error:', error);
+      throw error;
+    }
+
+    console.log('[updateServiceListing] Successfully updated with result:', data);
     return { data, error: null };
   } catch (error) {
     console.error('[updateServiceListing] Error:', error);

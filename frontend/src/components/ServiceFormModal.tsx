@@ -175,11 +175,13 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         // Include date if the field is shown
         ...(shouldShowDate && { date }),
         // Include availability schedule for service creation/editing
-        ...(mode !== 'request' && { 
+        ...(mode !== 'request' && {
           availability_schedule: {
             days: [],
             hours: '',
-            notes: ''
+            notes: '',
+            // Include date in availability_schedule as well (to be used by the backend)
+            ...(shouldShowDate && { scheduled_date: date })
           }
         }),
       };

@@ -16,9 +16,10 @@ import { Conversation } from './types';
 interface ConversationCardProps {
   conversation: Conversation;
   index?: number; // For staggered animation
+  onPress?: () => void; // Added press handler
 }
 
-const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) => {
+const ConversationCard = ({ conversation, index = 0, onPress }: ConversationCardProps) => {
   // Animation values
   const translateY = useRef(new Animated.Value(30)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -66,11 +67,11 @@ const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) =>
     ios: {
       shadowColor: conversation.color || theme.colors.primary,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: conversation.unread ? 0.2 : 0.1,
+      shadowOpacity: conversation.unreadCount > 0 ? 0.2 : 0.1,
       shadowRadius: 12,
     },
     android: {
-      elevation: conversation.unread ? 4 : 2,
+      elevation: conversation.unreadCount > 0 ? 4 : 2,
     },
     default: {},
   });
@@ -93,11 +94,12 @@ const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) =>
           activeOpacity={0.9}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
+          onPress={onPress}
           style={styles.cardTouchable}
         >
           <BlurView intensity={85} tint="light" style={styles.cardBlur}>
             {/* Left colored indicator for unread messages */}
-            {conversation.unread && (
+            {conversation.unreadCount > 0 && (
               <View 
                 style={[
                   styles.unreadIndicator, 
@@ -114,7 +116,7 @@ const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) =>
                   style={styles.iconBackground}
                 >
                   <MaterialCommunityIcons
-                    name={conversation.icon as keyof typeof MaterialCommunityIcons.glyphMap || 'chat'}
+                    name={conversation.icon as any || 'chat'}
                     size={20}
                     color={conversation.color || theme.colors.primary}
                   />
@@ -127,7 +129,7 @@ const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) =>
                   <Text 
                     style={[
                       styles.userName,
-                      conversation.unread && styles.unreadText
+                      conversation.unreadCount > 0 && styles.unreadText
                     ]}
                     numberOfLines={1}
                   >
@@ -138,7 +140,7 @@ const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) =>
                 <Text 
                   style={[
                     styles.messageText,
-                    conversation.unread && styles.unreadText
+                    conversation.unreadCount > 0 && styles.unreadText
                   ]}
                   numberOfLines={1}
                 >
@@ -146,13 +148,21 @@ const ConversationCard = ({ conversation, index = 0 }: ConversationCardProps) =>
                 </Text>
               </View>
 
-              {/* Right side - Chevron */}
+              {/* Right side - Unread count or chevron */}
               <View style={styles.chevronContainer}>
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={20}
-                  color={theme.colors.textTertiary}
-                />
+                {conversation.unreadCount > 0 ? (
+                  <View style={[styles.unreadBadge, { backgroundColor: conversation.color || theme.colors.primary }]}>
+                    <Text style={styles.unreadBadgeText}>
+                      {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                    </Text>
+                  </View>
+                ) : (
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={20}
+                    color={theme.colors.textTertiary}
+                  />
+                )}
               </View>
             </View>
           </BlurView>
@@ -239,6 +249,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    padding: 3,
+    paddingHorizontal: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

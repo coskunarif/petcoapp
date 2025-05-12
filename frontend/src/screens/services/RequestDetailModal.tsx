@@ -52,9 +52,35 @@ export default function RequestDetailModal({ visible, onDismiss, requestId }: Re
   // Set the request ID when it changes
   useEffect(() => {
     if (requestId) {
+      console.log('[RequestDetailModal] Setting selected request ID:', requestId);
       dispatch(setSelectedRequest(requestId));
     }
   }, [requestId, dispatch]);
+
+  // Effect to fetch the request if it's not in the Redux store
+  useEffect(() => {
+    if (visible && requestId && !request) {
+      console.log('[RequestDetailModal] Request not found in Redux store for ID:', requestId);
+
+      // Fetch the request from the API
+      const fetchRequest = async () => {
+        try {
+          console.log('[RequestDetailModal] Fetching request from API:', requestId);
+          const { data, error } = await servicesService.fetchRequestById(requestId);
+
+          if (error) {
+            console.error('[RequestDetailModal] Error fetching request:', error);
+          } else {
+            console.log('[RequestDetailModal] Successfully fetched request:', data?.id);
+          }
+        } catch (err) {
+          console.error('[RequestDetailModal] Exception fetching request:', err);
+        }
+      };
+
+      fetchRequest();
+    }
+  }, [visible, requestId, request]);
   
   // Update selected status when request changes
   useEffect(() => {

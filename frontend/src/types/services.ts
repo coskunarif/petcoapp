@@ -31,11 +31,19 @@ export interface ServiceListing {
     days?: string[];
     hours?: string;
     notes?: string;
+    scheduled_date?: string; // ISO date string for service scheduled date/time
   };
   is_active: boolean;
   created_at: string;
+
+  // This field doesn't exist in the database schema but is used in the code
+  // @deprecated Not in the actual database schema
   updated_at?: string;
-  
+
+  // These fields are for backwards compatibility but are now stored in availability_schedule.scheduled_date
+  // They should be considered deprecated
+  scheduled_date?: string; // Alternative field for scheduling
+
   // Optional joined data
   provider?: {
     id: string;
