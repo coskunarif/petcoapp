@@ -5,6 +5,7 @@ import userReducer from './slices/userSlice';
 import petReducer from './slices/petSlice';
 import serviceReducer from './slices/serviceSlice';
 import messagingReducer from './messagingSlice';
+import notificationsReducer from './slices/notificationsSlice';
 import { setupAuthStateListener, initializeAuth } from '../services/authStateListener';
 
 export const store = configureStore({
@@ -15,6 +16,7 @@ export const store = configureStore({
     services: serviceReducer,
     home: homeReducer,
     messaging: messagingReducer,
+    notifications: notificationsReducer,
   },
 });
 

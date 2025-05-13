@@ -11,6 +11,20 @@ module.exports = {
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
+  notification: {
+    icon: "./assets/logo.png",
+    color: "#6C63FF",
+    androidMode: "default"
+  },
+  plugins: [
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/logo.png",
+        color: "#6C63FF"
+      }
+    ]
+  ],
   assetBundlePatterns: ["**/*"],
   scheme: "petcoapp", // URL scheme for deep linking
   ios: {

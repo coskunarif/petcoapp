@@ -73,6 +73,7 @@ export const theme = {
     body: { fontSize: 16, fontWeight: '400' as const, color: '#23235B' },
     caption: { fontSize: 14, fontWeight: '400' as const, color: '#757575' },
     button: { fontSize: 16, fontWeight: '700' as const, letterSpacing: 0.3, color: '#FFFFFF' },
+    label: { fontSize: 14, fontWeight: '600' as const, color: '#23235B' },
   },
 
   /**

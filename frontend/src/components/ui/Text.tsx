@@ -3,13 +3,20 @@ import { Text as RNText, StyleSheet, TextStyle, TextProps } from 'react-native';
 import { theme } from '../../theme';
 
 interface CustomTextProps extends TextProps {
-  variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'button';
+  variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'button' | 'label';
   weight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'black';
   color?: keyof typeof theme.colors | string;
   align?: 'auto' | 'left' | 'right' | 'center' | 'justify';
   style?: TextStyle;
   children: ReactNode;
 }
+
+// Default styles to fall back on if a variant is missing
+const defaultTextStyle: TextStyle = {
+  fontSize: 16,
+  fontWeight: '400',
+  color: '#23235B',
+};
 
 const Text: React.FC<CustomTextProps> = ({
   variant = 'body',
@@ -20,11 +27,11 @@ const Text: React.FC<CustomTextProps> = ({
   children,
   ...props
 }) => {
-  // Get base style from typography in theme
-  const baseStyle = theme.typography[variant];
-  
-  // Determine font weight
-  let fontWeight: TextStyle['fontWeight'] = baseStyle.fontWeight;
+  // Get base style from typography in theme with fallback to default
+  const baseStyle = theme.typography[variant] || defaultTextStyle;
+
+  // Determine font weight with defensive check
+  let fontWeight: TextStyle['fontWeight'] = baseStyle.fontWeight || '400';
   if (weight) {
     switch (weight) {
       case 'normal':
@@ -44,15 +51,15 @@ const Text: React.FC<CustomTextProps> = ({
         break;
     }
   }
-  
-  // Determine text color
-  let textColor = baseStyle.color;
+
+  // Determine text color with defensive check
+  let textColor = baseStyle.color || theme.colors.text;
   if (color) {
-    textColor = color in theme.colors 
-      ? theme.colors[color as keyof typeof theme.colors] 
+    textColor = color in theme.colors
+      ? theme.colors[color as keyof typeof theme.colors]
       : color;
   }
-  
+
   return (
     <RNText
       style={[

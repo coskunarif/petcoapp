@@ -1,92 +1,120 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Switch
+  Switch,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { theme, globalStyles } from '../../../theme';
 import { Text, AppButton } from '../../../components/ui';
-
-interface NotificationSetting {
-  id: string;
-  title: string;
-  description: string;
-  enabled: boolean;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  selectUserId,
+  selectNotificationsState
+} from '../../../redux/selectors';
+import {
+  updateSetting,
+  updateMasterToggle,
+  fetchNotificationSettings,
+  saveNotificationSettings,
+  registerPushToken
+} from '../../../redux/slices/notificationsSlice';
+import { NotificationSetting } from '../../../services/notificationService';
 
 export default function NotificationSettingsScreen({ navigation }: any) {
-  const [settings, setSettings] = useState<NotificationSetting[]>([
-    {
-      id: 'messages',
-      title: 'Messages',
-      description: 'Notifications when you receive a new message',
-      enabled: true,
-    },
-    {
-      id: 'service_requests',
-      title: 'Service Requests',
-      description: 'Notifications for new service requests',
-      enabled: true,
-    },
-    {
-      id: 'service_updates',
-      title: 'Service Updates',
-      description: 'Updates about your booked services',
-      enabled: true,
-    },
-    {
-      id: 'promotions',
-      title: 'Promotions',
-      description: 'Special offers and promotions',
-      enabled: false,
-    },
-    {
-      id: 'payment',
-      title: 'Payment',
-      description: 'Payment receipts and notifications',
-      enabled: true,
-    },
-    {
-      id: 'system',
-      title: 'System',
-      description: 'System updates and announcements',
-      enabled: true,
-    },
-  ]);
+  // Redux setup
+  const dispatch = useDispatch();
+  const notificationsState = useSelector(selectNotificationsState) || {};
+  const {
+    settings = [],
+    masterEnabled = true,
+    loading = false,
+    error = null,
+    lastUpdated = null
+  } = notificationsState;
+  const userId = useSelector(selectUserId);
 
-  const [masterToggle, setMasterToggle] = useState(true);
+  // Local saved state to show success message
+  const [saved, setSaved] = useState(false);
+
+  // Load settings when component mounts
+  useEffect(() => {
+    if (userId) {
+      // @ts-ignore - TypeScript might complain about the dispatch type
+      dispatch(fetchNotificationSettings(userId));
+      // @ts-ignore
+      dispatch(registerPushToken());
+    } else {
+      console.log('[NotificationSettings] No user ID available, cannot fetch settings');
+    }
+  }, [dispatch, userId]);
+
+  // Reset saved state when settings change
+  useEffect(() => {
+    if (saved) {
+      setSaved(false);
+    }
+  }, [settings, masterEnabled]);
+
+  // Show error if one occurs
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error, [{ text: 'OK' }]);
+    }
+  }, [error]);
 
   const toggleSetting = (id: string) => {
-    setSettings(
-      settings.map(setting => 
-        setting.id === id 
-          ? { ...setting, enabled: !setting.enabled } 
-          : setting
-      )
-    );
-    
-    // Update master toggle if all are enabled or disabled
-    const updatedSettings = settings.map(setting => 
-      setting.id === id ? { ...setting, enabled: !setting.enabled } : setting
-    );
-    
-    const allEnabled = updatedSettings.every(setting => setting.enabled);
-    const allDisabled = updatedSettings.every(setting => !setting.enabled);
-    
-    if (allEnabled) setMasterToggle(true);
-    if (allDisabled) setMasterToggle(false);
+    try {
+      const setting = settings.find(setting => setting.id === id);
+      if (setting) {
+        dispatch(updateSetting({
+          id,
+          enabled: !setting.enabled
+        }));
+      }
+    } catch (error) {
+      console.error('[NotificationSettings] Error toggling setting:', error);
+    }
   };
 
   const toggleAll = (value: boolean) => {
-    setMasterToggle(value);
-    setSettings(
-      settings.map(setting => ({ ...setting, enabled: value }))
-    );
+    try {
+      dispatch(updateMasterToggle(value));
+    } catch (error) {
+      console.error('[NotificationSettings] Error toggling master switch:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!userId) {
+      Alert.alert('Error', 'User must be logged in to save notification settings');
+      return;
+    }
+
+    try {
+      // @ts-ignore - TypeScript might complain about the dispatch type
+      await dispatch(saveNotificationSettings({
+        userId,
+        settings,
+        masterEnabled
+      }));
+
+      setSaved(true);
+
+      // Clear saved state after 3 seconds
+      setTimeout(() => {
+        setSaved(false);
+      }, 3000);
+    } catch (error) {
+      console.error('[NotificationSettings] Error saving settings:', error);
+      Alert.alert('Error', 'Failed to save notification settings. Please try again later.');
+    }
   };
 
   return (
@@ -99,60 +127,85 @@ export default function NotificationSettingsScreen({ navigation }: any) {
         <View style={{ width: 40 }} /> {/* Empty space for balance */}
       </View>
 
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      )}
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Master toggle */}
-        <BlurView intensity={80} tint="light" style={styles.masterToggleContainer}>
-          <View style={styles.masterToggleContent}>
-            <View>
-              <Text variant="h3">All Notifications</Text>
-              <Text variant="body2" color="textSecondary">
-                {masterToggle ? 'Notifications are on' : 'Notifications are off'}
-              </Text>
-            </View>
-            <Switch
-              value={masterToggle}
-              onValueChange={toggleAll}
-              trackColor={{ false: '#e0e0e0', true: `${theme.colors.primary}80` }}
-              thumbColor={masterToggle ? theme.colors.primary : '#f4f4f4'}
-              ios_backgroundColor="#e0e0e0"
-            />
-          </View>
-        </BlurView>
-
-        {/* Individual notification settings */}
-        <View style={styles.settingsContainer}>
-          {settings.map(setting => (
-            <View key={setting.id} style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text variant="body" style={styles.settingTitle}>
-                  {setting.title}
-                </Text>
-                <Text variant="caption" color="textSecondary" style={styles.settingDescription}>
-                  {setting.description}
-                </Text>
+        {!loading && (
+          <>
+            {/* Master toggle */}
+            <BlurView intensity={80} tint="light" style={styles.masterToggleContainer}>
+              <View style={styles.masterToggleContent}>
+                <View>
+                  <Text variant="h3">All Notifications</Text>
+                  <Text variant="body2" color="textSecondary">
+                    {masterEnabled ? 'Notifications are on' : 'Notifications are off'}
+                  </Text>
+                </View>
+                <Switch
+                  value={masterEnabled}
+                  onValueChange={toggleAll}
+                  trackColor={{ false: '#e0e0e0', true: `${theme.colors.primary}80` }}
+                  thumbColor={masterEnabled ? theme.colors.primary : '#f4f4f4'}
+                  ios_backgroundColor="#e0e0e0"
+                />
               </View>
-              <Switch
-                value={masterToggle && setting.enabled}
-                onValueChange={() => toggleSetting(setting.id)}
-                trackColor={{ false: '#e0e0e0', true: `${theme.colors.primary}80` }}
-                thumbColor={masterToggle && setting.enabled ? theme.colors.primary : '#f4f4f4'}
-                ios_backgroundColor="#e0e0e0"
-                disabled={!masterToggle}
-              />
-            </View>
-          ))}
-        </View>
+            </BlurView>
 
-        <AppButton
-          title="Save Changes"
-          onPress={() => console.log('Save notification settings')}
-          fullWidth
-          style={styles.saveButton}
-        />
+            {/* Individual notification settings */}
+            <View style={styles.settingsContainer}>
+              {(settings || []).map(setting => (
+                <View key={setting?.id || Math.random().toString()} style={styles.settingItem}>
+                  <View style={styles.settingInfo}>
+                    <Text variant="body" style={styles.settingTitle}>
+                      {setting?.title || 'Notification Setting'}
+                    </Text>
+                    <Text variant="caption" color="textSecondary" style={styles.settingDescription}>
+                      {setting?.description || 'Control notification preferences'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={masterEnabled && Boolean(setting?.enabled)}
+                    onValueChange={() => setting?.id && toggleSetting(setting.id)}
+                    trackColor={{ false: '#e0e0e0', true: `${theme.colors.primary}80` }}
+                    thumbColor={masterEnabled && Boolean(setting?.enabled) ? theme.colors.primary : '#f4f4f4'}
+                    ios_backgroundColor="#e0e0e0"
+                    disabled={!masterEnabled}
+                  />
+                </View>
+              ))}
+            </View>
+
+            {lastUpdated && (
+              <Text
+                variant="caption"
+                color="textSecondary"
+                style={styles.lastUpdatedText}
+              >
+                Last updated: {new Date(lastUpdated).toLocaleString()}
+              </Text>
+            )}
+
+            <AppButton
+              title={saved ? "✓ Saved" : "Save Changes"}
+              onPress={handleSave}
+              fullWidth
+              style={[
+                styles.saveButton,
+                saved && styles.savedButton
+              ]}
+              loading={loading}
+              disabled={loading}
+            />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -227,5 +280,24 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: 8,
+  },
+  savedButton: {
+    backgroundColor: '#4CAF50',
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  lastUpdatedText: {
+    textAlign: 'center',
+    marginBottom: 8,
+    fontSize: 12,
   },
 });

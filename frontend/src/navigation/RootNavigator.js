@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
-import { Linking } from 'react-native';
+import { Linking, Text } from 'react-native';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import { useSelector, useDispatch } from 'react-redux';
@@ -17,6 +17,7 @@ function MainFallbackScreen() {
     console.warn("Redirected from legacy 'Main' screen. Please update navigation logic.");
     navigation.replace('Tabs');
   }, [navigation]);
+  // Using null is fine since we're not rendering any UI
   return null;
 }
 
@@ -63,7 +64,9 @@ export default function RootNavigator() {
   }, []);
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{
+      headerShown: false
+    }}>
       {isAuthenticated ? (
         <>
           <Stack.Screen name="Tabs" component={MainNavigator} />

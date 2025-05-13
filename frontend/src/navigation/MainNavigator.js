@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import PetsScreen from '../screens/PetsScreen';
@@ -37,7 +37,7 @@ export default function MainNavigator() {
             default:
               iconName = 'circle';
           }
-          
+
           return (
             <View style={[styles.iconContainer, focused && styles.focusedIconContainer]}>
               <MaterialCommunityIcons name={iconName} color={color} size={size} />
@@ -50,22 +50,30 @@ export default function MainNavigator() {
         tabBarLabelStyle: styles.tabBarLabel,
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        tabBarLabel: ({ focused, color }) => {
+          // This ensures tab labels are properly wrapped in Text components
+          return (
+            <Text style={[styles.tabBarLabel, { color }]}>
+              {route.name}
+            </Text>
+          );
+        },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
       />
-      <Tab.Screen 
-        name="Pets" 
+      <Tab.Screen
+        name="Pets"
         component={PetsScreen}
       />
-      <Tab.Screen 
-        name="Services" 
+      <Tab.Screen
+        name="Services"
         component={ServicesScreen}
       />
-      <Tab.Screen 
-        name="Messages" 
+      <Tab.Screen
+        name="Messages"
         component={MessagesNavigator}
       />
       <Tab.Screen

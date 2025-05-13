@@ -128,15 +128,64 @@ export async function getUserProfile(userId: string) {
  * Update user profile information
  */
 export async function updateUserProfile(userId: string, updates: Partial<User>) {
-  const { data, error } = await supabase
-    .from('users')
-    .update(updates)
-    .eq('id', userId)
-    .select()
-    .single();
-    
-  if (error) throw error;
-  return data;
+  console.log(`[authService] Updating profile for user ${userId} with:`, updates);
+
+  try {
+    // First check if the user exists
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, phone, email, full_name')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) {
+      console.error(`[authService] Error checking user existence:`, fetchError);
+      throw fetchError;
+    }
+
+    if (!existingUser) {
+      console.error(`[authService] User ${userId} not found in the database`);
+      throw new Error(`User not found. Please log out and in again.`);
+    }
+
+    console.log(`[authService] Existing user found:`, existingUser);
+
+    // Sanitize phone number if present
+    if (updates.phone) {
+      // Remove any extra whitespace
+      updates.phone = updates.phone.trim();
+      console.log(`[authService] Formatted phone number:`, updates.phone);
+    }
+
+    // Update the user profile
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`[authService] Error updating user profile:`, error);
+
+      // Provide more specific error messages for common issues
+      if (error.code === '23505') { // Unique constraint violation
+        throw new Error('This phone number is already in use by another account.');
+      } else if (error.code === '23502') { // Not null violation
+        throw new Error('Required information is missing.');
+      } else if (error.code === '42703') { // Undefined column
+        throw new Error('System error: Some fields could not be updated. Please try again later.');
+      } else {
+        throw error;
+      }
+    }
+
+    console.log(`[authService] Profile updated successfully:`, data);
+    return data;
+  } catch (error) {
+    console.error(`[authService] Unexpected error updating profile:`, error);
+    throw error;
+  }
 }
 
 /**

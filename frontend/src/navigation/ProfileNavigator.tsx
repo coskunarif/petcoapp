@@ -13,11 +13,21 @@ import NotificationSettingsScreen from '../screens/profile/settings/Notification
 
 // Create placeholder components for screens we haven't implemented yet
 const PlaceholderScreen = ({ route }: any) => {
-  const name = route.params?.name || route.name || 'Screen';
+  // Safely extract screen name to avoid direct string rendering
+  const screenNameFromParams = route.params?.name || '';
+  const screenNameFromRoute = route.name || '';
+  const fallbackName = 'Screen';
+
+  const screenName = screenNameFromParams || screenNameFromRoute || fallbackName;
+
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <RNText style={{ fontSize: 18, marginBottom: 10 }}>{name} Screen</RNText>
-      <RNText style={{ fontSize: 16, color: '#555' }}>Coming soon!</RNText>
+      <RNText style={{ fontSize: 18, marginBottom: 10 }}>
+        {screenName}
+      </RNText>
+      <RNText style={{ fontSize: 16, color: '#555' }}>
+        Coming soon!
+      </RNText>
     </View>
   );
 };
@@ -30,7 +40,9 @@ export default function ProfileNavigator() {
       initialRouteName="ProfileMain"
       screenOptions={{
         headerShown: false,
-        cardStyle: { backgroundColor: '#f9f9f9' }
+        cardStyle: { backgroundColor: '#f9f9f9' },
+        // Remove string based title options to ensure all text is wrapped
+        headerTitle: () => null
       }}
     >
       {/* Main Profile Screens */}
@@ -41,39 +53,45 @@ export default function ProfileNavigator() {
       <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
-      <Stack.Screen 
-        name="PrivacySettings" 
-        component={PlaceholderScreen} 
-        initialParams={{ name: 'Privacy & Security' }} 
+      <Stack.Screen
+        name="PrivacySettings"
+        component={PlaceholderScreen}
+        initialParams={{ name: 'Privacy & Security' }}
+        options={{ headerShown: false }}
       />
-      
+
       {/* Preferences Screens */}
-      <Stack.Screen 
-        name="LocationSettings" 
+      <Stack.Screen
+        name="LocationSettings"
         component={PlaceholderScreen}
         initialParams={{ name: 'Location Settings' }}
+        options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="LanguageSettings" 
+      <Stack.Screen
+        name="LanguageSettings"
         component={PlaceholderScreen}
         initialParams={{ name: 'Language' }}
+        options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="AppearanceSettings" 
+      <Stack.Screen
+        name="AppearanceSettings"
         component={PlaceholderScreen}
         initialParams={{ name: 'Appearance' }}
+        options={{ headerShown: false }}
       />
-      
+
       {/* Support Screens */}
-      <Stack.Screen 
-        name="HelpCenter" 
+      <Stack.Screen
+        name="HelpCenter"
         component={PlaceholderScreen}
         initialParams={{ name: 'Help Center' }}
+        options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="About" 
+      <Stack.Screen
+        name="About"
         component={PlaceholderScreen}
         initialParams={{ name: 'About PetCoApp' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

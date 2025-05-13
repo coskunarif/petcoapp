@@ -1,16 +1,17 @@
 import React, { useRef } from 'react';
-import { 
-  TouchableOpacity, 
-  Text, 
-  StyleSheet, 
+import {
+  TouchableOpacity,
+  StyleSheet,
   Animated,
   View,
-  Platform
+  Platform,
+  Text as RNText
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { theme } from '../../theme';
+import { Text } from '../ui';
 
 interface SignOutButtonProps {
   onSignOut: () => void;
@@ -65,13 +66,13 @@ const SignOutButton: React.FC<SignOutButtonProps> = ({ onSignOut }) => {
                 color="#FFFFFF"
                 style={styles.icon}
               />
-              <Text style={styles.text}>Sign Out</Text>
+              <RNText style={styles.text}>Sign Out</RNText>
             </LinearGradient>
           </BlurView>
         </TouchableOpacity>
       </Animated.View>
-      
-      <Text style={styles.versionText}>
+
+      <Text variant="caption" style={styles.versionText}>
         Version 1.2.0
       </Text>
     </View>

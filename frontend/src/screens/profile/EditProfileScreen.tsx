@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,7 +8,10 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
-  SafeAreaView
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { TextInput, IconButton } from 'react-native-paper';
 import { Formik } from 'formik';
@@ -28,9 +31,15 @@ export default function EditProfileScreen({ navigation }: any) {
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState('');
   const user = useSelector((state: any) => state.auth.user);
+  const scrollViewRef = useRef<ScrollView>(null);
   
   const profileSchema = Yup.object().shape({
     full_name: Yup.string().required('Full name is required'),
+    email: Yup.string().email('Invalid email format'),
+    phone: Yup.string()
+      .matches(/^[0-9+\-\s()]*$/, 'Invalid phone number format')
+      .min(7, 'Phone number is too short')
+      .max(20, 'Phone number is too long'),
     bio: Yup.string().max(200, 'Bio must be less than 200 characters'),
   });
   
@@ -48,24 +57,34 @@ export default function EditProfileScreen({ navigation }: any) {
   
   const handleUpdateProfile = async (values: any, { setSubmitting }: any) => {
     setFormError('');
-    
+    console.log('Starting profile update with values:', values);
+
     try {
       if (!user?.id) {
         throw new Error('User ID not found');
       }
-      
-      await dispatch(updateUserProfile({ 
+
+      console.log('Updating profile for user ID:', user.id);
+      const updates = {
+        full_name: values.full_name,
+        phone: values.phone,
+        bio: values.bio
+      };
+
+      console.log('Profile updates to be sent:', updates);
+
+      const result = await dispatch(updateUserProfile({
         userId: user.id,
-        updates: {
-          full_name: values.full_name,
-          bio: values.bio
-        }
+        updates
       })).unwrap();
-      
+
+      console.log('Profile update successful, result:', result);
+
       // Show success and navigate back
       Alert.alert('Success', 'Your profile has been updated successfully');
       navigation.goBack();
     } catch (error: any) {
+      console.error('Profile update failed:', error);
       setFormError(error.message || 'Failed to update profile');
     } finally {
       setSubmitting(false);
@@ -141,12 +160,22 @@ export default function EditProfileScreen({ navigation }: any) {
         <Text variant="h2">Edit Profile</Text>
         <View style={{width: 40}} /> {/* Empty space for balance */}
       </View>
-      
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
+
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.container}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            scrollEventThrottle={16}
+          >
         <BlurView intensity={60} tint="light" style={styles.profileImageContainer}>
           <LinearGradient
             colors={[theme.colors.primaryLight, 'rgba(255, 255, 255, 0.8)']}
@@ -186,6 +215,8 @@ export default function EditProfileScreen({ navigation }: any) {
         <Formik
           initialValues={{
             full_name: user?.full_name || '',
+            email: user?.email || '',
+            phone: user?.phone || '',
             bio: user?.bio || '',
           }}
           validationSchema={profileSchema}
@@ -205,13 +236,13 @@ export default function EditProfileScreen({ navigation }: any) {
                 style={styles.input}
                 outlineColor="rgba(230, 230, 230, 0.9)"
                 activeOutlineColor={theme.colors.primary}
-                theme={{ 
-                  colors: { 
+                theme={{
+                  colors: {
                     text: theme.colors.text,
                     placeholder: theme.colors.textSecondary,
                     background: theme.colors.surfaceHighlight,
                     primary: theme.colors.primary
-                  } 
+                  }
                 }}
                 left={<TextInput.Icon icon="account-outline" color={theme.colors.primary} />}
               />
@@ -220,7 +251,64 @@ export default function EditProfileScreen({ navigation }: any) {
                   {errors.full_name}
                 </Text>
               )}
-              
+
+              <Text variant="label" color="textSecondary" style={styles.inputLabel}>
+                Email Address
+              </Text>
+              <TextInput
+                mode="outlined"
+                value={values.email}
+                style={styles.input}
+                outlineColor="rgba(230, 230, 230, 0.9)"
+                activeOutlineColor={theme.colors.primary}
+                disabled={true}
+                theme={{
+                  colors: {
+                    text: theme.colors.textSecondary,
+                    placeholder: theme.colors.textSecondary,
+                    background: 'rgba(0, 0, 0, 0.03)',
+                    primary: theme.colors.primary
+                  }
+                }}
+                left={<TextInput.Icon icon="email-outline" color={theme.colors.textSecondary} />}
+              />
+              <Text variant="caption" color="textSecondary" style={styles.helperText}>
+                Email address cannot be changed as it is used for account verification
+              </Text>
+
+              <Text variant="label" color="textSecondary" style={styles.inputLabel}>
+                Phone Number
+              </Text>
+              <TextInput
+                mode="outlined"
+                value={values.phone}
+                onChangeText={handleChange('phone')}
+                onBlur={handleBlur('phone')}
+                error={touched.phone && !!errors.phone}
+                style={styles.input}
+                keyboardType="phone-pad"
+                outlineColor="rgba(230, 230, 230, 0.9)"
+                activeOutlineColor={theme.colors.primary}
+                placeholder="Enter your phone number"
+                theme={{
+                  colors: {
+                    text: theme.colors.text,
+                    placeholder: theme.colors.textSecondary,
+                    background: theme.colors.surfaceHighlight,
+                    primary: theme.colors.primary
+                  }
+                }}
+                left={<TextInput.Icon icon="phone-outline" color={theme.colors.primary} />}
+              />
+              {touched.phone && errors.phone && (
+                <Text variant="caption" color="error" style={styles.errorText}>
+                  {errors.phone}
+                </Text>
+              )}
+              <Text variant="caption" color="textSecondary" style={styles.helperText}>
+                Phone number for emergency contact
+              </Text>
+
               <Text variant="label" color="textSecondary" style={styles.inputLabel}>
                 Bio
               </Text>
@@ -233,17 +321,32 @@ export default function EditProfileScreen({ navigation }: any) {
                 style={styles.bioInput}
                 multiline
                 numberOfLines={4}
+                textAlignVertical="top"
+                placeholder="Tell us about yourself"
                 outlineColor="rgba(230, 230, 230, 0.9)"
                 activeOutlineColor={theme.colors.primary}
-                theme={{ 
-                  colors: { 
+                theme={{
+                  colors: {
                     text: theme.colors.text,
                     placeholder: theme.colors.textSecondary,
                     background: theme.colors.surfaceHighlight,
                     primary: theme.colors.primary
-                  } 
+                  }
                 }}
                 left={<TextInput.Icon icon="text-box-outline" color={theme.colors.primary} />}
+                onFocus={() => {
+                  // Auto-scroll to show this field when focused
+                  setTimeout(() => {
+                    // Use fixed scroll position based on testing
+                    const scrollPosition = Platform.OS === 'ios' ? 450 : 600;
+
+                    // Scroll to fixed position to ensure Bio field is visible with keyboard
+                    scrollViewRef.current?.scrollTo({
+                      y: scrollPosition,
+                      animated: true
+                    });
+                  }, Platform.OS === 'ios' ? 300 : 600);
+                }}
               />
               {touched.bio && errors.bio && (
                 <Text variant="caption" color="error" style={styles.errorText}>
@@ -260,18 +363,21 @@ export default function EditProfileScreen({ navigation }: any) {
                 </View>
               ) : null}
               
-              <AppButton
-                title="Save Changes"
-                onPress={handleSubmit}
-                loading={isSubmitting}
-                disabled={isSubmitting || uploading}
-                fullWidth
-                style={styles.saveButton}
-              />
+              <View style={{ paddingBottom: 80 }}>
+                <AppButton
+                  title="Save Changes"
+                  onPress={handleSubmit}
+                  loading={isSubmitting}
+                  disabled={isSubmitting || uploading}
+                  fullWidth
+                  style={styles.saveButton}
+                />
+              </View>
             </View>
           )}
         </Formik>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -283,7 +389,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingBottom: 200, // Add significant padding at the bottom for keyboard
   },
   header: {
     flexDirection: 'row',
@@ -363,14 +469,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   bioInput: {
-    marginBottom: 16,
-    minHeight: 120,
+    marginBottom: 24, // Increased bottom margin
+    minHeight: 150, // Increased height for better visibility
     textAlignVertical: 'top',
+    paddingTop: 12, // Add some padding for better text display
+    paddingBottom: 8, // Add bottom padding for text
   },
   errorText: {
     marginLeft: 12,
     marginBottom: 16,
     marginTop: -12,
+  },
+  helperText: {
+    marginLeft: 12,
+    marginBottom: 16,
+    marginTop: -12,
+    fontSize: 12,
   },
   errorContainer: {
     flexDirection: 'row',

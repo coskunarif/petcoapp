@@ -90,7 +90,7 @@ frontend/npm-debug.log*
 ./mcp_config.json
 
 # Ignore PetCoApp directory
-/PetCoApp/
+# /PetCoApp/
 /claude/
 
 # Ignore session summaries directories

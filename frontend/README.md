@@ -19,6 +19,8 @@
 - `src/redux/`: Redux store and slices
 - `src/api/`: Supabase client and API hooks
 - `src/components/`: Reusable UI components
+- `src/services/`: Business logic and backend integrations
+- `src/migrations/`: SQL migration scripts for Supabase
 
 ## Notes
 - Uses React Native Paper for UI
@@ -26,3 +28,16 @@
 - React Navigation for navigation
 - Formik/Yup for forms & validation
 - react-native-maps for map/location features
+- Expo Notifications for push notifications
+
+## Features
+
+### Profile Management
+- Edit personal information
+- Update profile pictures
+- Location settings
+
+### Notifications
+- User-configurable notification preferences
+- Push notifications for messages and service updates
+- See `src/screens/profile/settings/README-notifications.md` for setup instructions

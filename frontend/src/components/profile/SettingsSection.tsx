@@ -1,8 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  StyleSheet,
   TouchableOpacity,
   Platform,
   Animated
@@ -11,6 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
+import { Text } from '../ui';
 
 interface SettingsItemProps {
   icon: string;
@@ -100,12 +100,12 @@ const SettingsItem: React.FC<SettingsItemProps> = ({ icon, title, onPress, index
           </LinearGradient>
         </View>
         
-        <Text style={styles.settingText}>{title}</Text>
-        
-        <MaterialCommunityIcons 
-          name="chevron-right" 
-          size={22} 
-          color={theme.colors.textTertiary} 
+        <Text variant="body" style={styles.settingText}>{title}</Text>
+
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={22}
+          color={theme.colors.textTertiary}
         />
       </TouchableOpacity>
     </Animated.View>
@@ -117,7 +117,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, items }) => {
     <View style={styles.container}>
       <BlurView intensity={60} tint="light" style={styles.blurContainer}>
         <View style={styles.headerContainer}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text variant="h3" style={styles.sectionTitle}>{title}</Text>
         </View>
         
         <View style={styles.itemsContainer}>

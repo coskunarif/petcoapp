@@ -9,6 +9,7 @@ export interface User {
   email: string;
   full_name: string;
   profile_image_url?: string;
+  phone?: string; // Added phone field
   location?: any; // Geography type from PostGIS
   bio?: string;
   credit_balance: number;

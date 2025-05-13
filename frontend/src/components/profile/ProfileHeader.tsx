@@ -1,17 +1,18 @@
 import React, { useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
   Animated,
-  Platform
+  Platform,
+  Text as RNText
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
+import { Text } from '../ui';
 
 interface User {
   id?: string;
@@ -95,9 +96,9 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditProfile }) =>
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.profileInitial}>
+                <RNText style={styles.profileInitial}>
                   {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                </Text>
+                </RNText>
               </LinearGradient>
             )}
           </Animated.View>
@@ -109,11 +110,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditProfile }) =>
               { opacity: contentOpacity }
             ]}
           >
-            <Text style={styles.profileName}>
+            <Text variant="h3" style={styles.profileName}>
               {user?.full_name || 'User'}
             </Text>
-            
-            <Text style={styles.profileEmail}>
+
+            <Text variant="caption" style={styles.profileEmail}>
               {user?.email || ''}
             </Text>
           </Animated.View>
@@ -126,18 +127,18 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditProfile }) =>
             ]}
           >
             <BlurView intensity={40} tint="light" style={styles.statItem}>
-              <Text style={styles.statValue}>{user?.rating ? user.rating.toFixed(1) : '-'}</Text>
-              <Text style={styles.statLabel}>Rating</Text>
+              <Text variant="body" style={styles.statValue}>{user?.rating ? user.rating.toFixed(1) : '-'}</Text>
+              <Text variant="caption" style={styles.statLabel}>Rating</Text>
             </BlurView>
 
             <BlurView intensity={40} tint="light" style={styles.statItem}>
-              <Text style={styles.statValue}>{user?.service_count || 0}</Text>
-              <Text style={styles.statLabel}>Services</Text>
+              <Text variant="body" style={styles.statValue}>{user?.service_count || 0}</Text>
+              <Text variant="caption" style={styles.statLabel}>Services</Text>
             </BlurView>
 
             <BlurView intensity={40} tint="light" style={styles.statItem}>
-              <Text style={styles.statValue}>${user?.credit_balance?.toFixed(0) || 0}</Text>
-              <Text style={styles.statLabel}>Credits</Text>
+              <Text variant="body" style={styles.statValue}>${user?.credit_balance?.toFixed(0) || 0}</Text>
+              <Text variant="caption" style={styles.statLabel}>Credits</Text>
             </BlurView>
           </Animated.View>
           
@@ -167,7 +168,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditProfile }) =>
                   color="#FFFFFF"
                   style={styles.editButtonIcon}
                 />
-                <Text style={styles.editButtonText}>Edit Profile</Text>
+                <RNText style={styles.editButtonText}>Edit Profile</RNText>
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
