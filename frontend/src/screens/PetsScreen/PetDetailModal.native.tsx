@@ -9,6 +9,7 @@ import {
   setEditingPet,
   addPetAsync,
   updatePetAsync,
+  deletePetAsync,
   uploadPetImageAsync,
   setUploadProgress,
 } from '../../store/petsSlice';
@@ -186,7 +187,13 @@ const PetDetailModal: React.FC = () => {
       ).unwrap();
       
       console.log('[PetDetailModal] Image uploaded successfully:', url);
-      handlePhotosChange([...(form.photos || []), url]);
+      // Update both photos array and image_url (primary image)
+      const newPhotos = [...(form.photos || []), url];
+      handlePhotosChange(newPhotos);
+      // If this is the first image, also set it as the primary image_url
+      if (!form.image_url) {
+        handleChange('image_url', url);
+      }
     } catch (err: any) {
       console.error('[PetDetailModal] Image upload error:', err);
       setError(err.message || 'Image upload failed. Please try again.');
@@ -270,8 +277,11 @@ const PetDetailModal: React.FC = () => {
       // Handle images - prioritize the first photo as image_url
       if (form.photos && form.photos.length > 0) {
         petData.image_url = form.photos[0];
+        petData.photos = form.photos; // Store the full array of photos too
       } else if (form.image_url) {
         petData.image_url = form.image_url;
+        // Also set the photos array with this image for backward compatibility
+        petData.photos = [form.image_url];
       }
       
       // Make sure care_instructions is set from the current care object
@@ -316,6 +326,38 @@ const PetDetailModal: React.FC = () => {
   const handleCancel = () => {
     console.log('[PetDetailModal] handleCancel called');
     dispatch(setEditingPet(null));
+  };
+  
+  const handleDelete = () => {
+    console.log('[PetDetailModal] handleDelete called');
+    if (!form.id) {
+      console.warn('[PetDetailModal] Cannot delete pet without ID');
+      return;
+    }
+    
+    Alert.alert(
+      'Delete Pet',
+      `Are you sure you want to delete ${form.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSaving(true);
+              await dispatch(deletePetAsync(form.id) as any).unwrap();
+              console.log('[PetDetailModal] Pet deleted successfully');
+              dispatch(setEditingPet(null));
+            } catch (err: any) {
+              console.error('[PetDetailModal] Error deleting pet:', err);
+              setError(err.message || 'Failed to delete pet. Please try again.');
+              setSaving(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   try {
@@ -399,53 +441,80 @@ const PetDetailModal: React.FC = () => {
             
             {/* Footer with buttons */}
             <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
               padding: 16,
               borderTopWidth: 1,
               borderTopColor: '#eee',
             }}>
-              <TouchableOpacity 
-                style={{
-                  flex: 1,
-                  padding: 14,
-                  backgroundColor: '#f0f0f0',
-                  borderRadius: 8,
-                  marginRight: 8,
-                  alignItems: 'center',
-                }}
-                onPress={handleCancel} 
-                disabled={saving}
-              >
-                <Text style={{
-                  color: '#333',
-                  fontWeight: '600',
-                  fontSize: 16,
-                }}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={{
-                  flex: 1,
-                  padding: 14,
-                  backgroundColor: theme.colors.primary,
-                  borderRadius: 8,
-                  marginLeft: 8,
-                  alignItems: 'center',
-                }}
-                onPress={handleSave} 
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
+              {/* Show delete button only for existing pets */}
+              {form.id && (
+                <TouchableOpacity 
+                  style={{
+                    padding: 14,
+                    backgroundColor: 'rgba(211,47,47,0.08)',
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                  }}
+                  onPress={handleDelete} 
+                  disabled={saving}
+                >
+                  <MaterialCommunityIcons name="trash-can-outline" size={20} color={theme.colors.error} style={{marginRight: 8}} />
                   <Text style={{
-                    color: '#fff',
+                    color: theme.colors.error,
                     fontWeight: '600',
                     fontSize: 16,
-                  }}>{form.id ? 'Update' : 'Save'}</Text>
-                )}
-              </TouchableOpacity>
+                  }}>Delete {form.name}</Text>
+                </TouchableOpacity>
+              )}
+              
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+              }}>
+                <TouchableOpacity 
+                  style={{
+                    flex: 1,
+                    padding: 14,
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: 8,
+                    marginRight: 8,
+                    alignItems: 'center',
+                  }}
+                  onPress={handleCancel} 
+                  disabled={saving}
+                >
+                  <Text style={{
+                    color: '#333',
+                    fontWeight: '600',
+                    fontSize: 16,
+                  }}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={{
+                    flex: 1,
+                    padding: 14,
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 8,
+                    marginLeft: 8,
+                    alignItems: 'center',
+                  }}
+                  onPress={handleSave} 
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={{
+                      color: '#fff',
+                      fontWeight: '600',
+                      fontSize: 16,
+                    }}>{form.id ? 'Update' : 'Save'}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>

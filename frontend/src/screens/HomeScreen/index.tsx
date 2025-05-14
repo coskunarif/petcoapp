@@ -47,9 +47,6 @@ interface ServiceType {
   name: string;
 }
 
-// Toggle this to true to use mock data if real data isn't working
-const mockMode = false;
-
 type DashboardData = {
   userCredits: number;
   upcomingServices: {
@@ -58,35 +55,6 @@ type DashboardData = {
   };
   nearbyProviders: any[];
   error?: string;
-};
-
-const mockDashboardData: DashboardData = {
-  userCredits: 120.5,
-  upcomingServices: {
-    asProvider: [
-      {
-        id: '1',
-        start_time: '2025-04-20T09:00:00',
-        end_time: '2025-04-20T11:00:00',
-        status: 'pending',
-        users: { full_name: 'John Doe', profile_image_url: '' },
-        pets: { name: 'Buddy', image_url: '' },
-        service_types: { name: 'Dog Walking', icon: 'dog' },
-      },
-    ],
-    asRequester: [],
-  },
-  nearbyProviders: [
-    {
-      userId: 'p1',
-      name: 'Alice Smith',
-      profile_image_url: '',
-      distance: 2.3,
-      rating: 4.8,
-      serviceTypes: ['Dog Walking', 'Pet Sitting'],
-      availability: ['Mon', 'Wed', 'Fri'],
-    },
-  ],
 };
 
 const HomeScreen: React.FC = () => {
@@ -224,7 +192,7 @@ const HomeScreen: React.FC = () => {
       service_type_id: formData.service_type_id,
       description: formData.description,
       date: formData.date,
-      pet_id: undefined
+      pet_id: formData.pet_id // Get pet_id from form data
     };
     try {
       console.log('[HomeScreen] handleRequestService called with:', request);
@@ -237,6 +205,11 @@ const HomeScreen: React.FC = () => {
         if (!id || id.trim() === '') return null;
         return id;
       };
+      
+      // Check if pet_id is provided
+      if (!request.pet_id) {
+        console.warn('[RequestService] No pet_id provided for service request');
+      }
       
       // Create the request data with proper validation
       const insertData = {
@@ -390,28 +363,65 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     const initLocation = async () => {
       try {
+        console.log('[HomeScreen] Initializing location service');
         const coords = await getCurrentLocation();
-        dispatch(setLocation(coords));
+        
+        if (coords && (coords.latitude || coords.lat) && (coords.longitude || coords.lng)) {
+          console.log('[HomeScreen] Successfully got location:', {
+            lat: coords.latitude || coords.lat,
+            lng: coords.longitude || coords.lng
+          });
+          dispatch(setLocation(coords));
+        } else {
+          console.warn('[HomeScreen] Location service returned invalid coordinates:', coords);
+          // Fall back to a default location (optional)
+          // dispatch(setLocation(DEFAULT_LOCATION));
+        }
       } catch (err) {
         console.error('[HomeScreen] Error getting location:', err);
+        // Optionally fall back to a default location on error
+        // dispatch(setLocation(DEFAULT_LOCATION));
       }
     };
     
     initLocation();
-  }, [dispatch]);
+    
+    // Set up a timer to periodically refresh location if needed
+    const locationRefreshInterval = setInterval(() => {
+      if (user?.id) {
+        initLocation();
+      }
+    }, 5 * 60 * 1000); // Refresh every 5 minutes
+    
+    return () => {
+      clearInterval(locationRefreshInterval);
+    };
+  }, [dispatch, user?.id]);
   
   // Fetch dashboard data when component mounts or user/location changes
   useEffect(() => {
     if (user?.id && location) {
-      dispatch(fetchDashboardData({ 
-        userId: user.id, 
-        location: location as LocationCoords 
-      }));
+      // Log location data for debugging
+      console.log('[HomeScreen] Fetching dashboard with location:', {
+        lat: location.latitude || location.lat,
+        lng: location.longitude || location.lng,
+        hasLocation: !!location
+      });
       
-      // Also fetch service types for dropdowns
-      dispatch(fetchServiceTypes());
+      // Only fetch if we have valid location coordinates
+      if ((location.latitude || location.lat) && (location.longitude || location.lng)) {
+        dispatch(fetchDashboardData({ 
+          userId: user.id, 
+          location: location as LocationCoords 
+        }));
+        
+        // Also fetch service types for dropdowns
+        dispatch(fetchServiceTypes());
+      } else {
+        console.warn('[HomeScreen] Invalid location data, not fetching dashboard');
+      }
     }
-  }, [dispatch, user?.id, location?.latitude, location?.longitude]);
+  }, [dispatch, user?.id, location?.latitude, location?.longitude, location?.lat, location?.lng]);
   
   // Set up real-time subscription for service updates
   useEffect(() => {
@@ -477,15 +487,13 @@ const HomeScreen: React.FC = () => {
     } : null
   });
 
-  // Choose data source
-  const effectiveDashboardData: DashboardData = mockMode
-    ? { ...mockDashboardData, error: mockDashboardData.error ?? '' }
-    : {
-        userCredits,
-        upcomingServices,
-        nearbyProviders,
-        error: error ?? '',
-      };
+  // Use actual data from Redux
+  const effectiveDashboardData: DashboardData = {
+    userCredits,
+    upcomingServices,
+    nearbyProviders,
+    error: error ?? '',
+  };
 
   return (
     <View style={styles.container}>
@@ -538,12 +546,14 @@ const HomeScreen: React.FC = () => {
         mode="request"
         showTitle={true}
         showDate={true}
+        showPetSelection={true}
       />
       
       {/* Main Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
         refreshControl={
           <RefreshControl 
             refreshing={isLoading} 

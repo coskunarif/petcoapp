@@ -27,6 +27,11 @@ export interface Conversation {
   type?: string;
   icon?: string;
   color?: string;
+  metadata?: {
+    role?: 'owner' | 'provider';
+    serviceType?: string;
+    status?: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  };
 }
 
 export interface Message {
@@ -112,6 +117,11 @@ export const fetchConversations = async () => {
         let icon = 'chat';
         let color = '#6C63FF'; // Default primary color
         let type = 'chat';
+        
+        // Determine role for the conversation
+        let role: 'owner' | 'provider' | undefined;
+        let serviceType: string | undefined;
+        let status: 'pending' | 'accepted' | 'completed' | 'cancelled' | undefined;
 
         if (message.service_request_id) {
           // This is a service related message
@@ -124,18 +134,30 @@ export const fetchConversations = async () => {
               case 1:
                 color = '#FFA726'; // Orange
                 icon = 'dog-side';
+                serviceType = 'Pet Sitting';
                 break;
               case 2:
                 color = '#42A5F5'; // Blue
                 icon = 'scissors-cutting';
+                serviceType = 'Grooming';
                 break;
               case 3:
                 color = '#66BB6A'; // Green
                 icon = 'walk';
+                serviceType = 'Dog Walking';
                 break;
               default:
                 color = '#6C63FF'; // Default purple
+                serviceType = 'Pet Service';
             }
+            
+            // Determine role based on the service request
+            // The user who received the service request is the owner
+            // The user who sent the service request is the provider
+            role = message.service_request.requester_id === userId ? 'owner' : 'provider';
+            
+            // Get status
+            status = message.service_request.status as 'pending' | 'accepted' | 'completed' | 'cancelled';
           }
         }
         
@@ -153,6 +175,11 @@ export const fetchConversations = async () => {
           type,
           icon,
           color,
+          metadata: {
+            role,
+            serviceType,
+            status
+          }
         });
       });
     }

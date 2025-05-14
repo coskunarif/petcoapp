@@ -12,16 +12,14 @@ interface Props {
 
 const ServiceCard: React.FC<Props> = ({ service, onPress }) => {
   try {
-    // Format the date for display
+    // Format the date for display (only showing day, not time)
     const formatDate = (dateString: string) => {
       try {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { 
           weekday: 'short',
           month: 'short', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          day: 'numeric'
         });
       } catch (err) {
         console.warn(`[ServiceCard] Error formatting date ${dateString}:`, err);
@@ -36,6 +34,13 @@ const ServiceCard: React.FC<Props> = ({ service, onPress }) => {
     const imageSource = service.pets?.image_url 
       ? { uri: service.pets.image_url } 
       : { uri: defaultPetUrl };
+      
+    // For logging purposes only - help identify missing pet information
+    if (!service.pets) {
+      console.warn('[ServiceCard] Missing pet information for service:', service.id);
+    } else if (!service.pets.name) {
+      console.warn('[ServiceCard] Pet has no name for service:', service.id);
+    }
       
     // Get the appropriate status icon and color
     const getStatusInfo = (status: string) => {

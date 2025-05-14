@@ -28,7 +28,7 @@ import { servicesService } from '../../../services/servicesService';
 import { AppDispatch, RootState } from '../../../store';
 import { ServiceListing, ServiceType } from '../../../types/services';
 import { EmptyState } from '../../../components/ui';
-import { ServiceFormModal } from '../../../components';
+import { ServiceFormModal, ServiceListingForm } from '../../../components';
 
 interface MyListingsTabProps {
   onScroll?: (event: any) => void;
@@ -47,6 +47,7 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [serviceFormVisible, setServiceFormVisible] = useState(false);
+  const [enhancedFormVisible, setEnhancedFormVisible] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ServiceListing | null>(null);
 
   // Split animation values by purpose to avoid conflicts:
@@ -143,7 +144,9 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
   // Function to open the service form modal for creating a new listing
   const handleCreateListing = () => {
     setSelectedListing(null); // No initial values for a new listing
-    setServiceFormVisible(true);
+    
+    // Use the enhanced form for better UX
+    setEnhancedFormVisible(true);
   };
 
   // Function to open the service form modal for editing an existing listing
@@ -168,8 +171,8 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
       scheduled_date: scheduledDate
     });
 
-    // Show the form immediately without waiting for refresh
-    setServiceFormVisible(true);
+    // Show the enhanced form for better UX
+    setEnhancedFormVisible(true);
 
     // Refresh listings in the background to get latest data
     refreshListings().catch(error => {
@@ -329,7 +332,7 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
       {/* Header Section */}
       {renderHeader()}
       
-      {/* Service Form Modal */}
+      {/* Legacy Service Form Modal - Kept for backward compatibility */}
       <ServiceFormModal
         visible={serviceFormVisible}
         onClose={() => setServiceFormVisible(false)}
@@ -350,6 +353,23 @@ export default function MyListingsTab({ onScroll }: MyListingsTabProps) {
         mode={selectedListing ? 'edit' : 'create'}
         showTitle={true}
         showDate={true} // Changed to true for consistency with HomeScreen
+      />
+      
+      {/* Enhanced Service Listing Form */}
+      <ServiceListingForm
+        visible={enhancedFormVisible}
+        onClose={() => setEnhancedFormVisible(false)}
+        onSubmit={handleServiceFormSubmit}
+        serviceTypes={serviceTypes || []}
+        initialValues={selectedListing ? {
+          title: selectedListing.title,
+          service_type_id: selectedListing.service_type_id,
+          description: selectedListing.description,
+          availability_schedule: selectedListing.availability_schedule,
+          price: selectedListing.price || selectedListing.service_type?.credit_value,
+          photos: selectedListing.photos || [] // Add photo support in future implementation
+        } : undefined}
+        mode={selectedListing ? 'edit' : 'create'}
       />
       
       {/* Content Section */}

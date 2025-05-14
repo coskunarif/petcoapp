@@ -91,5 +91,5 @@ The app uses PostgreSQL via Supabase with the following main tables:
 
 ## Key Functions
 - complete_service_request: Handles changing a request status to completed and transferring credits
-- find_nearby_providers: Uses PostGIS to find service providers within a specified distance
+- find_nearby_providers: Uses PostGIS to find service providers within a specified distance, returning provider details including service types and availability
 - handle_new_user: Trigger function that creates default notification settings for new users

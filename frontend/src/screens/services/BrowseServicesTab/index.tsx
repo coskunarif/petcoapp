@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator
 } from 'react-native';
+import ServiceFilterBar from './ServiceFilterBar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,6 +41,7 @@ import { AppDispatch, RootState } from '../../../store';
 // Create a ServiceDetailModal standalone component
 import ServiceDetailModal from '../ServiceDetailModal';
 import ServiceCard from './ServiceCard';
+import FilterModal from '../../components/services/FilterModal';
 
 // Create animated FlatList component to support native events with useNativeDriver
 const AnimatedFlatList = Animated.createAnimatedComponent<any>(FlatList);
@@ -97,6 +99,18 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const navigation = useNavigation<any>();
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filter modal state
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<{
+    serviceType?: string;
+    priceRange?: [number, number];
+    rating?: number;
+    distance?: number;
+  }>({});
   
   // Animation values - ensure consistent use of native driver for all animations
   // Use separate Animated.Value for scroll events to avoid conflicts
@@ -295,6 +309,35 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
     setSelectedService(service);
     setModalVisible(true);
   };
+  
+  // Handle search submission
+  const handleSearchSubmit = () => {
+    // In a real app, you would call the API with the search query
+    console.log('Searching for:', searchQuery);
+    if (searchQuery.trim()) {
+      // For now, we'll just show an alert since search is not fully implemented
+      alert(`Search for "${searchQuery}" would be sent to the API in a real app.`);
+    }
+  };
+  
+  // Handle filter application
+  const handleApplyFilters = (filters: {
+    serviceType?: string;
+    priceRange?: [number, number];
+    rating?: number;
+    distance?: number;
+  }) => {
+    console.log('Applying filters:', filters);
+    setActiveFilters(filters);
+    
+    // Update Redux filter if service type is selected
+    if (filters.serviceType !== activeFilters.serviceType) {
+      setSelectedFilter(filters.serviceType || null);
+    }
+    
+    // In a real app, you would call the API with all the filters
+    // For now, we're just handling the service type filter through Redux
+  };
 
   const renderServiceCard = ({ item, index }: { item: any, index: number }) => {
     return (
@@ -322,15 +365,36 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
         {/* Filter section header to establish context */}
         <View style={styles.filterHeaderContainer}>
           <Text style={styles.filterHeaderText}>Filter Services</Text>
-          {selectedFilter && (
+          <View style={styles.filterHeaderActions}>
+            {selectedFilter && (
+              <TouchableOpacity 
+                style={styles.clearFilterButton}
+                onPress={() => setSelectedFilter(null)}
+              >
+                <Text style={styles.clearFilterText}>Clear</Text>
+                <MaterialCommunityIcons name="close" size={16} color={theme.colors.primary} />
+              </TouchableOpacity>
+            )}
+            
+            {/* Add "View Providers" button */}
             <TouchableOpacity 
-              style={styles.clearFilterButton}
-              onPress={() => setSelectedFilter(null)}
+              style={styles.viewProvidersButton}
+              onPress={() => {
+                const selectedType = selectedFilter
+                  ? serviceTypes.find(type => type.id === selectedFilter)
+                  : undefined;
+                
+                navigation.navigate('ProvidersList', {
+                  serviceType: selectedType,
+                  title: selectedType ? `${selectedType.name} Providers` : 'All Providers',
+                  filterBy: { distance: true, availability: true, rating: true }
+                });
+              }}
             >
-              <Text style={styles.clearFilterText}>Clear All</Text>
-              <MaterialCommunityIcons name="close" size={16} color={theme.colors.primary} />
+              <MaterialCommunityIcons name="account-group" size={16} color={theme.colors.primary} />
+              <Text style={styles.viewProvidersText}>View Providers</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
         
         <FlatList
@@ -436,6 +500,15 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
   return (
     <View style={styles.container}>
       {renderHeader()}
+      
+      {/* Service Filter Bar */}
+      <ServiceFilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchSubmit={handleSearchSubmit}
+        onFilterPress={() => setFilterModalVisible(true)}
+        activeFilters={activeFilters}
+      />
       
       {renderFilterChips()}
       
@@ -570,6 +643,15 @@ const BrowseServicesTab: React.FC<BrowseServicesTabProps> = ({ onScroll }) => {
         }}
         serviceId={selectedService?.id}
       />
+      
+      {/* Filter Modal */}
+      <FilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        serviceTypes={serviceTypes}
+        initialFilters={activeFilters}
+        onApplyFilters={handleApplyFilters}
+      />
     </View>
   );
 };
@@ -670,6 +752,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.text,
   },
+  filterHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   clearFilterButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -677,12 +763,29 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: theme.borderRadius.pill,
+    marginRight: 8,
   },
   clearFilterText: {
     fontSize: 12,
     fontWeight: '600',
     color: theme.colors.primary,
     marginRight: 4,
+  },
+  viewProvidersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(108,99,255,0.1)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: theme.borderRadius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.2)',
+  },
+  viewProvidersText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginLeft: 4,
   },
   filtersContent: {
     paddingHorizontal: 16,

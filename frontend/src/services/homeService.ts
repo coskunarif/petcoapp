@@ -84,8 +84,9 @@ export async function fetchUpcomingServices(userId: string): Promise<{
         start_time, 
         end_time, 
         status, 
+        pet_id,
         users!requester_id(full_name, profile_image_url), 
-        pets(name, image_url), 
+        pets!left(name, image_url), 
         service_types(name, icon)
       `)
       .eq('provider_id', userId)
@@ -107,8 +108,9 @@ export async function fetchUpcomingServices(userId: string): Promise<{
         start_time, 
         end_time, 
         status, 
+        pet_id,
         users!provider_id(full_name, profile_image_url), 
-        pets(name, image_url), 
+        pets!left(name, image_url), 
         service_types(name, icon)
       `)
       .eq('requester_id', userId)
@@ -128,10 +130,10 @@ export async function fetchUpcomingServices(userId: string): Promise<{
       users: service.users ? (Array.isArray(service.users) ? service.users[0] : service.users) : undefined,
       pets: service.pets ? (Array.isArray(service.pets) ? service.pets[0] : service.pets) : undefined,
       service_types: service.service_types
-        ? Array.isArray(service.service_types)
-          ? service.service_types
-          : [service.service_types]
-        : [],
+        ? (Array.isArray(service.service_types)
+          ? service.service_types[0]  // Take first element if it's an array
+          : service.service_types)    // Otherwise use as is
+        : undefined,                  // Use undefined instead of empty array when missing
     });
 
     return {
@@ -162,34 +164,61 @@ export async function findNearbyProviders(
       return [];
     }
 
+    // Make sure we have valid coordinates
+    if (
+      !location.latitude && 
+      !location.longitude && 
+      !location.lat && 
+      !location.lng
+    ) {
+      console.warn('[homeService] Invalid location coordinates');
+      return [];
+    }
+
+    // Use lat/lng or latitude/longitude based on what's available
+    const longitude = location.longitude || location.lng || 0;
+    const latitude = location.latitude || location.lat || 0;
+
     console.log(
-      `[homeService] Finding providers within ${radiusKm}km of ${location.latitude}, ${location.longitude}`
+      `[homeService] Finding providers within ${radiusKm}km of ${latitude}, ${longitude}`
     );
 
-    // Use the stored procedure for geo search
-    const { data, error } = await supabase.rpc('find_nearby_providers', {
-      user_location: `POINT(${location.longitude} ${location.latitude})`,
+    // Use the stored procedure for geo search (with more robust error handling)
+    const response = await supabase.rpc('find_nearby_providers', {
+      user_location: `POINT(${longitude} ${latitude})`,
       distance_km: radiusKm,
       min_rating: 0, // No minimum rating filter
       service_type: serviceTypeId || null, // Optional service type filter
     });
+
+    const { data, error } = response;
 
     if (error) {
       console.error('[homeService] Error finding nearby providers:', error);
       throw error;
     }
 
-    console.log('[homeService] Found nearby providers:', data?.length || 0);
+    // Log complete response for debugging
+    console.log('[homeService] Find nearby providers response:', {
+      status: response.status,
+      statusText: response.statusText,
+      count: data?.length || 0
+    });
+
+    if (!data || data.length === 0) {
+      console.log('[homeService] No nearby providers found');
+      return [];
+    }
 
     // Transform the data to match our Provider interface
     return (data || []).map((item: any) => ({
       userId: item.id,
       name: item.full_name,
       profile_image_url: item.profile_image_url,
-      distance: parseFloat(item.distance_km.toFixed(1)),
+      distance: parseFloat((item.distance_km || 0).toFixed(1)),
       rating: item.rating || 0,
-      serviceTypes: item.service_types || [],
-      availability: item.availability || [],
+      serviceTypes: Array.isArray(item.service_types) ? item.service_types : [],
+      availability: Array.isArray(item.availability) ? item.availability : [],
     }));
   } catch (error) {
     console.error('[homeService] Failed to find nearby providers:', error);

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,15 +9,78 @@ import { Message } from './types';
 interface ServiceRequestMessageProps {
   message: Message;
   isMyMessage: boolean;
+  onAccept?: (serviceId: string) => void;
+  onDecline?: (serviceId: string) => void;
+  onComplete?: (serviceId: string) => void;
+  onViewDetails?: (serviceId: string) => void;
 }
 
-const ServiceRequestMessage: React.FC<ServiceRequestMessageProps> = ({ message, isMyMessage }) => {
+const ServiceRequestMessage: React.FC<ServiceRequestMessageProps> = ({ 
+  message, 
+  isMyMessage,
+  onAccept,
+  onDecline,
+  onComplete,
+  onViewDetails
+}) => {
+  const [isActionsVisible, setIsActionsVisible] = useState(false);
+  
   // Get service details from the message
   const serviceInfo = message.serviceInfo || {};
   const serviceName = serviceInfo.service_type?.name || 'Service';
   const serviceStatus = serviceInfo.status || 'pending';
   const serviceIcon = getServiceIcon(serviceInfo.service_type?.icon);
   const serviceColor = getServiceColor(serviceStatus);
+  const serviceId = serviceInfo.id || '';
+  
+  // Determine if actions should be shown based on status and message origin
+  const canShowActions = serviceStatus === 'pending' && !isMyMessage;
+  const canShowComplete = serviceStatus === 'accepted' && !isMyMessage;
+  
+  // Toggle action buttons
+  const toggleActions = () => {
+    setIsActionsVisible(!isActionsVisible);
+  };
+  
+  // Handle accepting a service request
+  const handleAccept = () => {
+    if (onAccept) {
+      onAccept(serviceId);
+    } else {
+      // Just for demo, simulate accepting the request
+      Alert.alert('Success', `Service request "${serviceName}" accepted!`);
+    }
+  };
+  
+  // Handle declining a service request
+  const handleDecline = () => {
+    if (onDecline) {
+      onDecline(serviceId);
+    } else {
+      // Just for demo, simulate declining the request
+      Alert.alert('Declined', `Service request "${serviceName}" declined.`);
+    }
+  };
+  
+  // Handle completing a service request
+  const handleComplete = () => {
+    if (onComplete) {
+      onComplete(serviceId);
+    } else {
+      // Just for demo, simulate completing the request
+      Alert.alert('Completed', `Service "${serviceName}" marked as completed!`);
+    }
+  };
+  
+  // Handle viewing service details
+  const handleViewDetails = () => {
+    if (onViewDetails) {
+      onViewDetails(serviceId);
+    } else {
+      // Just for demo
+      Alert.alert('Service Details', JSON.stringify(serviceInfo, null, 2));
+    }
+  };
   
   return (
     <View
@@ -70,16 +133,84 @@ const ServiceRequestMessage: React.FC<ServiceRequestMessageProps> = ({ message, 
               </Text>
             </View>
           )}
+          
+          {/* Show service action buttons based on status */}
+          {isActionsVisible && (
+            <View style={styles.actionsContainer}>
+              {canShowActions && (
+                <>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.acceptButton]}
+                    onPress={handleAccept}
+                  >
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={16}
+                      color="white"
+                    />
+                    <Text style={styles.acceptButtonText}>Accept</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.declineButton]}
+                    onPress={handleDecline}
+                  >
+                    <MaterialCommunityIcons
+                      name="close"
+                      size={16}
+                      color="white"
+                    />
+                    <Text style={styles.declineButtonText}>Decline</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              
+              {canShowComplete && (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.completeButton]}
+                  onPress={handleComplete}
+                >
+                  <MaterialCommunityIcons
+                    name="check-circle-outline"
+                    size={16}
+                    color="white"
+                  />
+                  <Text style={styles.completeButtonText}>Mark Complete</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
         
-        <TouchableOpacity style={styles.detailsButton}>
-          <Text style={styles.detailsButtonText}>View Details</Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={16}
-            color={theme.colors.primary}
-          />
-        </TouchableOpacity>
+        <View style={styles.footerContainer}>
+          <TouchableOpacity 
+            style={styles.detailsButton}
+            onPress={handleViewDetails}
+          >
+            <Text style={styles.detailsButtonText}>View Details</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={16}
+              color={theme.colors.primary}
+            />
+          </TouchableOpacity>
+          
+          {(canShowActions || canShowComplete) && (
+            <TouchableOpacity 
+              style={styles.actionToggleButton}
+              onPress={toggleActions}
+            >
+              <Text style={styles.actionToggleText}>
+                {isActionsVisible ? 'Hide Actions' : 'Show Actions'}
+              </Text>
+              <MaterialCommunityIcons
+                name={isActionsVisible ? "chevron-up" : "chevron-down"}
+                size={16}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </BlurView>
       
       <Text 
@@ -226,15 +357,90 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.textSecondary,
   },
+  actionsContainer: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    marginBottom: 8,
+    marginRight: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgba(0,0,0,0.2)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  acceptButton: {
+    backgroundColor: '#4CAF50', // Green
+  },
+  declineButton: {
+    backgroundColor: '#F44336', // Red
+  },
+  completeButton: {
+    backgroundColor: '#2196F3', // Blue
+  },
+  acceptButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  declineButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  completeButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  footerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
   detailsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    paddingHorizontal: 12,
+    flex: 1,
   },
   detailsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginRight: 4,
+  },
+  actionToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  actionToggleText: {
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.primary,

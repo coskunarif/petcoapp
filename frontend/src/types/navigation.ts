@@ -17,6 +17,17 @@ export type ServicesStackParamList = {
   RequestService: { serviceId?: string };
 };
 
+// Services Navigation Param List (expanded for new Request Management screens)
+export type ServicesNavigationParamList = {
+  ServicesList: undefined;
+  ServiceDetail: { service: any };
+  RequestService: { serviceId?: string };
+  RequestList: undefined;
+  RequestDetail: { requestId: string; backScreen?: string };
+  ModifyRequest: { requestId: string };
+  RequestHistory: undefined;
+};
+
 // Pets Stack Navigator
 export type PetsStackParamList = {
   PetList: undefined;

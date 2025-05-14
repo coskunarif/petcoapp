@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, Animated } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Animated } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ServiceCard from './ServiceCard';
 import { theme } from '../../../theme';
@@ -41,19 +41,25 @@ const UpcomingServicesSection: React.FC<Props> = ({ services, onServicePress }) 
           <Text style={styles.subtitle}>{sortedServices.length} scheduled</Text>
         </View>
         
-        <FlatList
-          horizontal
-          data={sortedServices}
-          keyExtractor={item => item.id || `service-${Math.random()}`}
-          renderItem={({ item }) => (
-            <ServiceCard service={item} onPress={() => onServicePress(item)} />
-          )}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          decelerationRate="fast"
-          snapToAlignment="start"
-          snapToInterval={276} // Card width + horizontal margin
-        />
+        <View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            decelerationRate="fast"
+            snapToAlignment="start"
+            snapToInterval={276} // Card width + horizontal margin
+            nestedScrollEnabled={true}
+          >
+            {sortedServices.map(item => (
+              <ServiceCard 
+                key={item.id || `service-${Math.random()}`}
+                service={item} 
+                onPress={() => onServicePress(item)} 
+              />
+            ))}
+          </ScrollView>
+        </View>
       </Animated.View>
     );
   } catch (err) {

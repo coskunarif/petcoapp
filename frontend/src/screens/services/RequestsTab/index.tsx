@@ -5,8 +5,10 @@ import {
   Animated, 
   Text,
   Platform,
-  SafeAreaView
+  SafeAreaView,
+  TouchableOpacity
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -113,6 +115,9 @@ export default function RequestsTab({ onScroll }: RequestsTabProps) {
     </Animated.View>
   );
   
+  // Get the navigation prop
+  const navigation = useNavigation();
+
   return (
     <View style={styles.container}>
       {/* Animated Header */}
@@ -123,6 +128,23 @@ export default function RequestsTab({ onScroll }: RequestsTabProps) {
         asProvider={asProvider}
         onToggle={handleToggleRole}
       />
+      
+      {/* View All Requests Button */}
+      <View style={styles.viewAllContainer}>
+        <TouchableOpacity 
+          style={styles.viewAllButton}
+          onPress={() => navigation.navigate('RequestManagement')}
+        >
+          <Text style={styles.viewAllText}>
+            View All Requests
+          </Text>
+          <MaterialCommunityIcons 
+            name="arrow-right" 
+            size={18} 
+            color={theme.colors.primary}
+          />
+        </TouchableOpacity>
+      </View>
       
       {/* Request List */}
       <RequestsList 
@@ -164,5 +186,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textSecondary,
     marginBottom: 16,
+  },
+  viewAllContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    alignItems: 'flex-end',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginRight: 4,
   },
 });

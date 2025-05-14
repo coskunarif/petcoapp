@@ -13,6 +13,11 @@ interface Conversation {
   lastMessageTime: string;
   unreadCount: number;
   serviceRequestId?: string;
+  metadata?: {
+    role?: 'owner' | 'provider';
+    serviceType?: string;
+    status?: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  };
 }
 
 interface Message {
@@ -48,6 +53,7 @@ interface MessagingState {
     searchTerm: string;
     showArchived: boolean;
     serviceRequestFilter: string | null;
+    roleFilter: 'all' | 'owner' | 'provider';
   };
 }
 
@@ -73,6 +79,7 @@ const initialState: MessagingState = {
     searchTerm: '',
     showArchived: false,
     serviceRequestFilter: null,
+    roleFilter: 'all',
   },
 };
 

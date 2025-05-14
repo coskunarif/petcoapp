@@ -1,31 +1,33 @@
 import React from 'react';
 import { View, StyleSheet, Platform, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import HomeScreen from '../screens/HomeScreen';
-import PetsScreen from '../screens/PetsScreen';
-import ServicesScreen from '../screens/services';
-import MessagesNavigator from './MessagesNavigator';
-import ProfileNavigator from './ProfileNavigator';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
+
+// Import screens
+import DashboardScreen from '../screens/DashboardScreen';
+import PetOwnerScreen from '../screens/PetOwnerScreen';
+import ProviderScreen from '../screens/ProviderScreen';
+import MessagesNavigator from './MessagesNavigator';
+import ProfileNavigator from './ProfileNavigator';
 
 const Tab = createBottomTabNavigator();
 
 export default function MainNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="Dashboard"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size, focused }) => {
           let iconName;
           switch (route.name) {
-            case 'Home':
-              iconName = 'home';
+            case 'Dashboard':
+              iconName = 'view-dashboard';
               break;
-            case 'Pets':
+            case 'PetOwner':
               iconName = 'dog';
               break;
-            case 'Services':
+            case 'Provider':
               iconName = 'handshake';
               break;
             case 'Messages':
@@ -52,25 +54,34 @@ export default function MainNavigator() {
         tabBarHideOnKeyboard: true,
         tabBarLabel: ({ focused, color }) => {
           // This ensures tab labels are properly wrapped in Text components
+          let label;
+          switch (route.name) {
+            case 'PetOwner':
+              label = 'Pet Owner';
+              break;
+            default:
+              label = route.name;
+          }
+          
           return (
             <Text style={[styles.tabBarLabel, { color }]}>
-              {route.name}
+              {label}
             </Text>
           );
         },
       })}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        name="Dashboard"
+        component={DashboardScreen}
       />
       <Tab.Screen
-        name="Pets"
-        component={PetsScreen}
+        name="PetOwner"
+        component={PetOwnerScreen}
       />
       <Tab.Screen
-        name="Services"
-        component={ServicesScreen}
+        name="Provider"
+        component={ProviderScreen}
       />
       <Tab.Screen
         name="Messages"

@@ -4,8 +4,15 @@ import { useNavigation } from '@react-navigation/native';
 import { Linking, Text } from 'react-native';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+import RequestManagementNavigator from './RequestManagementNavigator';
 import { useSelector, useDispatch } from 'react-redux';
 import PetDetailModal from '../screens/PetsScreen/PetDetailModal.native';
+import PetDetailScreen from '../screens/PetsScreen/PetDetailScreen';
+import PetPhotoScreen from '../screens/PetsScreen/PetPhotoScreen';
+import CareInstructionsScreen from '../screens/PetsScreen/CareInstructionsScreen';
+import ProvidersListScreen from '../screens/services/ProvidersListScreen';
+import ProviderDetailScreen from '../screens/services/ProviderDetailScreen';
+import { StripeProvider } from '../components/stripe/StripeProvider';
 import { supabase } from '../supabaseClient';
 
 const Stack = createStackNavigator();
@@ -64,17 +71,25 @@ export default function RootNavigator() {
   }, []);
 
   return (
-    <Stack.Navigator screenOptions={{
-      headerShown: false
-    }}>
-      {isAuthenticated ? (
-        <>
-          <Stack.Screen name="Tabs" component={MainNavigator} />
-          <Stack.Screen name="PetDetail" component={PetDetailModal} />
-        </>
-      ) : (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-      )}
-    </Stack.Navigator>
+    <StripeProvider>
+      <Stack.Navigator screenOptions={{
+        headerShown: false
+      }}>
+        {isAuthenticated ? (
+          <>
+            <Stack.Screen name="Tabs" component={MainNavigator} />
+            <Stack.Screen name="PetDetail" component={PetDetailScreen} />
+            <Stack.Screen name="PetDetailModal" component={PetDetailModal} />
+            <Stack.Screen name="PetPhoto" component={PetPhotoScreen} />
+            <Stack.Screen name="CareInstructions" component={CareInstructionsScreen} />
+            <Stack.Screen name="ProvidersList" component={ProvidersListScreen} />
+            <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+            <Stack.Screen name="RequestManagement" component={RequestManagementNavigator} />
+          </>
+        ) : (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        )}
+      </Stack.Navigator>
+    </StripeProvider>
   );
 }

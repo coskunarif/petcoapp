@@ -35,15 +35,15 @@ const NearbyProvidersSection: React.FC<Props> = ({ providers, onProviderPress })
           </TouchableOpacity>
         </View>
         
-        <FlatList
-          data={providers}
-          keyExtractor={item => item.userId || `provider-${Math.random()}`}
-          renderItem={({ item }) => (
-            <ProviderCard provider={item} onPress={() => onProviderPress(item)} />
-          )}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-        />
+        <View style={styles.providersContainer}>
+          {providers.map(provider => (
+            <ProviderCard 
+              key={provider.userId || `provider-${Math.random()}`}
+              provider={provider} 
+              onPress={() => onProviderPress(provider)} 
+            />
+          ))}
+        </View>
       </Animated.View>
     );
   } catch (err) {
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 2,
   },
-  listContent: {
+  providersContainer: {
     paddingVertical: 4,
   },
   emptyContainer: {

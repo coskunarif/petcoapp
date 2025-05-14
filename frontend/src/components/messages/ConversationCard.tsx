@@ -126,15 +126,31 @@ const ConversationCard = ({ conversation, index = 0, onPress }: ConversationCard
               {/* Middle - User name and message */}
               <View style={styles.messageContainer}>
                 <View style={styles.nameTimeRow}>
-                  <Text 
-                    style={[
-                      styles.userName,
-                      conversation.unreadCount > 0 && styles.unreadText
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {conversation.otherUser.name}
-                  </Text>
+                  <View style={styles.nameRoleContainer}>
+                    <Text 
+                      style={[
+                        styles.userName,
+                        conversation.unreadCount > 0 && styles.unreadText
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {conversation.otherUser.name}
+                    </Text>
+                    {conversation.metadata?.role && (
+                      <View style={[
+                        styles.roleIndicator,
+                        { 
+                          backgroundColor: conversation.metadata.role === 'owner' 
+                            ? '#66BB6A' // Green for owner
+                            : '#FFA726'  // Orange for provider
+                        }
+                      ]}>
+                        <Text style={styles.roleText}>
+                          {conversation.metadata.role === 'owner' ? 'Owner' : 'Provider'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.timeText}>{conversation.lastMessageTime}</Text>
                 </View>
                 <Text 
@@ -225,11 +241,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
+  nameRoleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   userName: {
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text,
-    flex: 1,
+    marginRight: 6,
+  },
+  roleIndicator: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
+  roleText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
   },
   timeText: {
     fontSize: 12,

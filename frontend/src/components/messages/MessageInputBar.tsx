@@ -15,18 +15,22 @@ import { theme } from '../../theme';
 
 interface MessageInputBarProps {
   onSend: () => void;
+  onAttachImage?: () => void;
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   isLoading?: boolean;
+  showAttachmentButton?: boolean;
 }
 
 const MessageInputBar: React.FC<MessageInputBarProps> = ({
   onSend,
+  onAttachImage,
   value,
   onChangeText,
   placeholder = 'Type a message...',
-  isLoading = false
+  isLoading = false,
+  showAttachmentButton = true
 }) => {
   const [height, setHeight] = useState(40);
   const [isFocused, setIsFocused] = useState(false);
@@ -91,13 +95,18 @@ const MessageInputBar: React.FC<MessageInputBarProps> = ({
             />
 
             {/* Show attachment button */}
-            <TouchableOpacity style={styles.iconButton}>
-              <MaterialCommunityIcons
-                name="paperclip"
-                size={22}
-                color={theme.colors.textSecondary}
-              />
-            </TouchableOpacity>
+            {showAttachmentButton && (
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={onAttachImage}
+              >
+                <MaterialCommunityIcons
+                  name="image-outline"
+                  size={22}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Send button */}

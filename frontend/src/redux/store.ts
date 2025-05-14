@@ -6,6 +6,7 @@ import petReducer from './slices/petSlice';
 import serviceReducer from './slices/serviceSlice';
 import messagingReducer from './messagingSlice';
 import notificationsReducer from './slices/notificationsSlice';
+import earningsReducer from './slices/earningsSlice';
 import { setupAuthStateListener, initializeAuth } from '../services/authStateListener';
 
 export const store = configureStore({
@@ -17,6 +18,7 @@ export const store = configureStore({
     home: homeReducer,
     messaging: messagingReducer,
     notifications: notificationsReducer,
+    earnings: earningsReducer,
   },
 });
 

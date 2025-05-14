@@ -96,8 +96,7 @@ const PetsList: React.FC<PetsListProps> = ({
         renderItem={({ item }) => (
           <PetCard 
             pet={item} 
-            onEdit={handleEdit} 
-            onDelete={handleDelete} 
+            onEdit={handleEdit}
           />
         )}
         contentContainerStyle={[
@@ -116,16 +115,6 @@ const PetsList: React.FC<PetsListProps> = ({
             tintColor={theme.colors.primary}
           />
         }
-      />
-      <ConfirmationModal
-        visible={confirmVisible}
-        message={`Are you sure you want to delete${petToDelete ? ` ${petToDelete.name}` : ''}?`}
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-        confirmText="Yes, Delete"
-        cancelText="Cancel"
-        iconName="delete-outline"
-        iconColor="#d32f2f"
       />
     </>
   );

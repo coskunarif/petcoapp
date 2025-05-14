@@ -42,71 +42,90 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ form, onChange }) =
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Basic Information</Text>
       {/* Name */}
-      <View style={styles.inputRow}>
-        <TextInput
-          style={getInputStyle('name')}
-          placeholder="Name"
-          value={form.name}
-          onChangeText={text => { onChange('name', text); setTouched(t => ({...t, name: true})); }}
-          onFocus={() => setFocus('name')}
-          onBlur={() => setFocus(null)}
-          accessibilityLabel="Pet Name"
-        />
-        {renderValidationIcon('name')}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Name</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={getInputStyle('name')}
+            placeholder="Enter pet's name"
+            value={form.name}
+            onChangeText={text => { onChange('name', text); setTouched(t => ({...t, name: true})); }}
+            onFocus={() => setFocus('name')}
+            onBlur={() => setFocus(null)}
+            accessibilityLabel="Pet Name"
+          />
+          {renderValidationIcon('name')}
+        </View>
       </View>
+      
       {/* Species */}
-      <View style={styles.inputRow}>
-        <TextInput
-          style={getInputStyle('species')}
-          placeholder="Species"
-          value={form.species}
-          onChangeText={text => { onChange('species', text); setTouched(t => ({...t, species: true})); }}
-          onFocus={() => setFocus('species')}
-          onBlur={() => setFocus(null)}
-          accessibilityLabel="Species"
-        />
-        {renderValidationIcon('species')}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Species</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={getInputStyle('species')}
+            placeholder="Dog, Cat, Bird, etc."
+            value={form.species}
+            onChangeText={text => { onChange('species', text); setTouched(t => ({...t, species: true})); }}
+            onFocus={() => setFocus('species')}
+            onBlur={() => setFocus(null)}
+            accessibilityLabel="Species"
+          />
+          {renderValidationIcon('species')}
+        </View>
       </View>
+      
       {/* Breed */}
-      <View style={styles.inputRow}>
-        <TextInput
-          style={getInputStyle('breed')}
-          placeholder="Breed"
-          value={form.breed}
-          onChangeText={text => { onChange('breed', text); setTouched(t => ({...t, breed: true})); }}
-          onFocus={() => setFocus('breed')}
-          onBlur={() => setFocus(null)}
-          accessibilityLabel="Breed"
-        />
-        {renderValidationIcon('breed')}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Breed</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={getInputStyle('breed')}
+            placeholder="Enter breed"
+            value={form.breed}
+            onChangeText={text => { onChange('breed', text); setTouched(t => ({...t, breed: true})); }}
+            onFocus={() => setFocus('breed')}
+            onBlur={() => setFocus(null)}
+            accessibilityLabel="Breed"
+          />
+          {renderValidationIcon('breed')}
+        </View>
       </View>
+      
       {/* Age */}
-      <View style={styles.inputRow}>
-        <TextInput
-          style={getInputStyle('age')}
-          placeholder="Age"
-          value={form.age ? String(form.age) : ''}
-          onChangeText={text => { onChange('age', text.replace(/[^0-9]/g, '')); setTouched(t => ({...t, age: true})); }}
-          keyboardType="numeric"
-          onFocus={() => setFocus('age')}
-          onBlur={() => setFocus(null)}
-          accessibilityLabel="Age"
-        />
-        {renderValidationIcon('age')}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Age (years)</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={getInputStyle('age')}
+            placeholder="Enter age"
+            value={form.age ? String(form.age) : ''}
+            onChangeText={text => { onChange('age', text.replace(/[^0-9]/g, '')); setTouched(t => ({...t, age: true})); }}
+            keyboardType="numeric"
+            onFocus={() => setFocus('age')}
+            onBlur={() => setFocus(null)}
+            accessibilityLabel="Age"
+          />
+          {renderValidationIcon('age')}
+        </View>
       </View>
+      
       {/* Weight */}
-      <View style={styles.inputRow}>
-        <TextInput
-          style={getInputStyle('weight')}
-          placeholder="Weight (kg)"
-          value={form.weight ? String(form.weight) : ''}
-          onChangeText={text => { onChange('weight', text.replace(/[^0-9.]/g, '')); setTouched(t => ({...t, weight: true})); }}
-          keyboardType="numeric"
-          onFocus={() => setFocus('weight')}
-          onBlur={() => setFocus(null)}
-          accessibilityLabel="Weight"
-        />
-        {renderValidationIcon('weight')}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Weight (kg)</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={getInputStyle('weight')}
+            placeholder="Enter weight"
+            value={form.weight ? String(form.weight) : ''}
+            onChangeText={text => { onChange('weight', text.replace(/[^0-9.]/g, '')); setTouched(t => ({...t, weight: true})); }}
+            keyboardType="numeric"
+            onFocus={() => setFocus('weight')}
+            onBlur={() => setFocus(null)}
+            accessibilityLabel="Weight"
+          />
+          {renderValidationIcon('weight')}
+        </View>
       </View>
     </View>
   );
@@ -122,12 +141,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontWeight: 'bold',
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: 16,
+  },
+  fieldContainer: {
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 6,
+    color: '#4b5563', // gray-600
+    paddingLeft: 4,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
   },
   input: {
     flex: 1,

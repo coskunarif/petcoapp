@@ -10,6 +10,22 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import PersonalInfoScreen from '../screens/profile/settings/PersonalInfoScreen';
 import PaymentMethodsScreen from '../screens/profile/settings/PaymentMethodsScreen';
 import NotificationSettingsScreen from '../screens/profile/settings/NotificationSettingsScreen';
+import LocationSettingsScreen from '../screens/profile/settings/LocationSettingsScreen';
+
+// Stripe screens
+import AddPaymentMethodScreen from '../screens/profile/payments/AddPaymentMethodScreen';
+import PaymentConfirmationScreen from '../screens/profile/payments/PaymentConfirmationScreen';
+import PaymentSuccessScreen from '../screens/profile/payments/PaymentSuccessScreen';
+import StripeConnectSetupScreen from '../screens/profile/payments/StripeConnectSetupScreen';
+import BankAccountScreen from '../screens/profile/payments/BankAccountScreen';
+
+// Earnings screens
+import EarningsDashboardScreen from '../screens/profile/EarningsDashboardScreen';
+import PayoutSettingsScreen from '../screens/profile/PayoutSettingsScreen';
+import TransactionHistoryScreen from '../screens/profile/TransactionHistoryScreen';
+import TransactionDetailScreen from '../screens/profile/TransactionDetailScreen';
+import ReceiptViewScreen from '../screens/profile/ReceiptViewScreen';
+import RefundsManagementScreen from '../screens/profile/RefundsManagementScreen';
 
 // Create placeholder components for screens we haven't implemented yet
 const PlaceholderScreen = ({ route }: any) => {
@@ -59,12 +75,18 @@ export default function ProfileNavigator() {
         initialParams={{ name: 'Privacy & Security' }}
         options={{ headerShown: false }}
       />
+      
+      {/* Payment/Stripe Screens */}
+      <Stack.Screen name="AddPaymentMethod" component={AddPaymentMethodScreen} />
+      <Stack.Screen name="PaymentConfirmation" component={PaymentConfirmationScreen} />
+      <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+      <Stack.Screen name="StripeConnectSetup" component={StripeConnectSetupScreen} />
+      <Stack.Screen name="BankAccount" component={BankAccountScreen} options={{ headerShown: true, headerTitle: 'Bank Accounts' }} />
 
       {/* Preferences Screens */}
       <Stack.Screen
         name="LocationSettings"
-        component={PlaceholderScreen}
-        initialParams={{ name: 'Location Settings' }}
+        component={LocationSettingsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -91,6 +113,26 @@ export default function ProfileNavigator() {
         name="About"
         component={PlaceholderScreen}
         initialParams={{ name: 'About PetCoApp' }}
+        options={{ headerShown: false }}
+      />
+      
+      {/* Earnings Screens */}
+      <Stack.Screen name="EarningsDashboard" component={EarningsDashboardScreen} />
+      <Stack.Screen name="PayoutSettings" component={PayoutSettingsScreen} />
+      <Stack.Screen name="TransactionsList" component={TransactionHistoryScreen} />
+      <Stack.Screen name="TransactionDetail" component={TransactionDetailScreen} />
+      <Stack.Screen name="ReceiptView" component={ReceiptViewScreen} />
+      <Stack.Screen name="RefundsManagement" component={RefundsManagementScreen} />
+      <Stack.Screen
+        name="TaxInformation"
+        component={PlaceholderScreen}
+        initialParams={{ name: 'Tax Information' }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PaymentSchedule"
+        component={PlaceholderScreen}
+        initialParams={{ name: 'Payment Schedule' }}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

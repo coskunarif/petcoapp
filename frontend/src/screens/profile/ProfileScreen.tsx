@@ -135,6 +135,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           items={[
             { icon: 'account-outline', title: 'Personal Information', onPress: () => navigation.navigate('PersonalInfo') },
             { icon: 'credit-card-outline', title: 'Payment Methods', onPress: () => navigation.navigate('PaymentMethods') },
+            { icon: 'cash-multiple', title: 'Earnings & Payouts', onPress: () => navigation.navigate('EarningsDashboard') },
             { icon: 'bell-outline', title: 'Notifications', onPress: () => navigation.navigate('NotificationSettings') },
             { icon: 'shield-outline', title: 'Privacy & Security', onPress: () => navigation.navigate('PrivacySettings') }
           ]}

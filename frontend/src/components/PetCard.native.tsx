@@ -21,40 +21,40 @@ const PetCard: React.FC<PetCardProps> = ({ pet, onEdit, onDelete }) => {
       >
         <AppCard>
           <View style={styles.petCardContent}>
-            <Image
-              source={{ uri: pet.photos && pet.photos[0] ? pet.photos[0] : 'https://via.placeholder.com/100' }}
-              style={styles.petImage}
-              accessibilityLabel={pet.name}
-            />
-            <View style={styles.petInfo}>
-              <Text style={styles.petName}>{pet.name || 'Unnamed Pet'}</Text>
-              <Text style={styles.petBreed}>{pet.species || 'Unknown'} • {pet.breed || 'Mixed'}</Text>
-              <Text style={styles.petDetails}>
-                {pet.age ? `${pet.age} years • ` : ''}
-                {pet.weight ? `${pet.weight} kg` : ''}
-              </Text>
+            {/* Left section: Image and Info */}
+            <View style={styles.leftSection}>
+              <Image
+                source={{ 
+                  uri: pet.image_url || (pet.photos && pet.photos[0]) 
+                    ? pet.image_url || pet.photos[0] 
+                    : 'https://via.placeholder.com/100' 
+                }}
+                style={styles.petImage}
+                accessibilityLabel={pet.name}
+              />
+              <View style={styles.petInfo}>
+                <Text style={styles.petName} numberOfLines={1} ellipsizeMode="tail">
+                  {pet.name || 'Unnamed Pet'}
+                </Text>
+                <Text style={styles.petBreed} numberOfLines={1} ellipsizeMode="tail">
+                  {pet.species || 'Unknown'} • {pet.breed || 'Mixed'}
+                </Text>
+                <Text style={styles.petDetails} numberOfLines={1} ellipsizeMode="tail">
+                  {pet.age ? `${pet.age} years • ` : ''}
+                  {pet.weight ? `${pet.weight} kg` : ''}
+                </Text>
+              </View>
             </View>
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={(e) => { e.stopPropagation(); onEdit && onEdit(pet); }}
-                accessibilityLabel={`Edit ${pet.name}`}
-              >
-                <MaterialCommunityIcons name="pencil" size={20} color={theme.colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={(e) => { e.stopPropagation(); onDelete && onDelete(pet); }}
-                accessibilityLabel={`Delete ${pet.name}`}
-              >
-                <MaterialCommunityIcons name="trash-can-outline" size={20} color={theme.colors.error} />
-              </TouchableOpacity>
+            
+            {/* Right section: Just the chevron */}
+            <View style={styles.rightSection}>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={22}
+                color={theme.colors.textTertiary}
+                style={styles.chevron}
+              />
             </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={theme.colors.textTertiary}
-            />
           </View>
         </AppCard>
       </TouchableOpacity>
@@ -70,20 +70,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 0,
+    justifyContent: 'space-between',
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    overflow: 'hidden', // Ensure content doesn't overflow
+  },
+  rightSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0, // Don't allow right section to shrink
+    paddingLeft: 8,
   },
   petImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     marginRight: 16,
     backgroundColor: theme.colors.primaryLight,
+    flexShrink: 0, // Don't allow the image to shrink
   },
   petInfo: {
     flex: 1,
+    overflow: 'hidden', // Prevent content from overflowing
   },
   petName: {
     ...theme.typography.h3,
     marginBottom: 4,
+    fontSize: 16,
   },
   petBreed: {
     fontSize: 14,
@@ -94,15 +110,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textTertiary,
   },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  iconButton: {
-    padding: 8,
-    marginHorizontal: 4,
-    borderRadius: 20,
+  chevron: {
+    flexShrink: 0,
+    opacity: 0.6,
   },
 });
 

@@ -11,6 +11,7 @@ import {
   ScrollView
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 
@@ -144,6 +145,8 @@ const OfferServiceModal: React.FC<OfferServiceModalProps> = ({ visible, onClose,
                     onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
                     style={styles.picker}
                     enabled={!submitting}
+                    itemStyle={styles.pickerItem}
+                    dropdownIconColor="#333"
                   >
                     {serviceTypes && serviceTypes.length > 0 ? (
                       serviceTypes.map((st) => (
@@ -300,10 +303,23 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#fff',
     overflow: 'hidden',
+    marginBottom: Platform.OS === 'android' ? 10 : 0,
+    paddingVertical: Platform.OS === 'android' ? 5 : 0,
+    minHeight: Platform.OS === 'android' ? 60 : 150,
   },
   picker: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 150 : 50,
+    height: Platform.OS === 'ios' ? 150 : Dimensions.get('window').height * 0.07,
+    color: '#333',
+    fontSize: 16,
+    marginVertical: Platform.OS === 'android' ? 8 : 0,
+  },
+  pickerItem: {
+    fontSize: 18,
+    height: 120,
+    color: '#333',
+    backgroundColor: '#fff',
+    fontWeight: '400',
   },
   priceInputContainer: {
     flexDirection: 'row',

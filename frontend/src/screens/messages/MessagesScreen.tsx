@@ -30,9 +30,6 @@ import {
 } from '../../services/messagesService';
 import { setFilters } from '../../redux/messagingSlice';
 
-// Log store state to debug
-import store from '../../store';
-
 const MessagesScreen = () => {
   // Main state
   const [modalOpen, setModalOpen] = useState(false);
@@ -57,55 +54,41 @@ const MessagesScreen = () => {
     serviceRequestFilter: null
   });
 
-  // Memoize the conversations array to prevent unnecessary re-renders
+  // Memoize the conversations array with role filtering
   const conversations = useMemo(() => {
-    return conversationIds.map((id: string) => conversationsById[id]);
-  }, [conversationIds, conversationsById]);
+    const allConversations = conversationIds.map((id: string) => conversationsById[id]);
+    
+    if (filters.roleFilter === 'all') {
+      return allConversations;
+    }
+    
+    // Filter based on role
+    return allConversations.filter((conversation: any) => {
+      // This is a placeholder - you'll need to implement the actual role determination logic
+      const isOwnerConversation = conversation?.metadata?.role === 'owner';
+      return filters.roleFilter === 'owner' ? isOwnerConversation : !isOwnerConversation;
+    });
+  }, [conversationIds, conversationsById, filters.roleFilter]);
 
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const fabScale = useRef(new Animated.Value(1)).current;
-  
-  // Calculate header opacity based on scroll position
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 50, 100],
     outputRange: [0, 0.3, 1],
     extrapolate: 'clamp',
   });
-
+  const fabScale = useRef(new Animated.Value(1)).current;
+  
   // Load conversations when the component mounts
   useEffect(() => {
     if (userId) {
-      // Debug: Log current Redux store state
-      console.log('[MessagesScreen] Redux store state:', store.getState());
-      console.log('[MessagesScreen] Current messaging state:', store.getState().messaging);
-      console.log('[MessagesScreen] Current conversationsById:', conversationsById);
-      console.log('[MessagesScreen] Current conversationIds:', conversationIds);
-
-      // Force refresh conversations
       loadConversations();
     }
   }, [userId]);
 
   const loadConversations = async () => {
     try {
-      console.log('[MessagesScreen] Loading conversations...');
-      const result = await fetchConversations();
-      console.log('[MessagesScreen] Conversations loaded:', result.length);
-      console.log('[MessagesScreen] Redux state after load:',
-        store.getState().messaging.conversations.allIds.length);
-
-      // Force refresh of local state from Redux
-      const newConversationsById = store.getState().messaging.conversations.byId;
-      const newConversationIds = store.getState().messaging.conversations.allIds;
-
-      // If redux has conversations but component doesn't, force a re-render
-      if (newConversationIds.length > 0 && conversationIds.length === 0) {
-        console.log('[MessagesScreen] Redux has conversations but component state is empty, forcing update');
-        // Using direct dispatch to ensure messages are in both stores
-        dispatch(setConversations(result));
-      }
+      await fetchConversations();
     } catch (error) {
       console.error('[MessagesScreen] Error loading conversations:', error);
     }
@@ -114,15 +97,11 @@ const MessagesScreen = () => {
   // Handle scroll events to trigger animations
   const handleScroll = (event: any) => {
     try {
-      // Avoid crashes if we get an invalid event
       if (!event || !event.nativeEvent || typeof event.nativeEvent.contentOffset?.y !== 'number') {
-        console.warn('[MessagesScreen] Invalid scroll event received');
         return;
       }
       
       const scrollPosition = event.nativeEvent.contentOffset.y;
-      
-      // Just set the value directly - no comparison needed
       scrollY.setValue(scrollPosition);
     } catch (error) {
       console.error('[MessagesScreen] Error in handleScroll:', error);
@@ -164,8 +143,8 @@ const MessagesScreen = () => {
     dispatch(setFilters({ searchTerm: text }));
   };
 
-  // Handle filter changes (archived, service type)
-  const handleFilterChange = (filterType: 'showArchived' | 'serviceRequestFilter', value: boolean | string | null) => {
+  // Handle filter changes
+  const handleFilterChange = (filterType: 'showArchived' | 'serviceRequestFilter' | 'roleFilter', value: boolean | string | null) => {
     dispatch(setFilters({ [filterType]: value }));
   };
 
@@ -174,14 +153,11 @@ const MessagesScreen = () => {
     setModalOpen(false);
     
     try {
-      // Send the first message to start the conversation
       const conversationId = await startConversation(otherUserId, "Hello! 👋");
       
       if (conversationId) {
-        // Find the user info from our list
         const otherUser = users.find(u => u.id === otherUserId);
         
-        // Navigate to chat detail screen
         navigation.navigate('ChatDetail' as never, {
           conversationId,
           otherUserId,
@@ -195,10 +171,8 @@ const MessagesScreen = () => {
 
   // Navigate to chat detail screen when a conversation is selected
   const handleConversationSelect = (conversation: any) => {
-    // Set the active conversation in Redux
     setActiveConversationAction(conversation.id);
     
-    // Navigate to the chat detail screen
     navigation.navigate('ChatDetail' as never, {
       conversationId: conversation.id,
       otherUserId: conversation.otherUser.id,
@@ -221,16 +195,6 @@ const MessagesScreen = () => {
             <BlurView intensity={80} style={styles.blurHeader} tint="light">
               <SafeAreaView style={styles.headerContent}>
                 <Text style={styles.headerTitle}>Messages</Text>
-                <TouchableOpacity 
-                  style={styles.headerButton}
-                  onPress={() => console.log('Settings pressed')}
-                >
-                  <MaterialCommunityIcons 
-                    name="cog-outline" 
-                    size={22} 
-                    color={theme.colors.text} 
-                  />
-                </TouchableOpacity>
               </SafeAreaView>
             </BlurView>
           </View>
@@ -243,14 +207,49 @@ const MessagesScreen = () => {
             <Text style={styles.mainTitle}>Messages</Text>
           </View>
 
-          {/* SearchBar and Filters */}
+          {/* Role Selector */}
+          <View style={styles.roleContainer}>
+            <TouchableOpacity
+              style={[
+                styles.roleButton, 
+                filters.roleFilter === 'all' && styles.activeRoleButton
+              ]}
+              onPress={() => handleFilterChange('roleFilter', 'all')}
+            >
+              <Text style={[
+                styles.roleText,
+                filters.roleFilter === 'all' && styles.activeRoleText
+              ]}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.roleButton, 
+                filters.roleFilter === 'owner' && styles.activeRoleButton
+              ]}
+              onPress={() => handleFilterChange('roleFilter', 'owner')}
+            >
+              <Text style={[
+                styles.roleText,
+                filters.roleFilter === 'owner' && styles.activeRoleText
+              ]}>As Pet Owner</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.roleButton, 
+                filters.roleFilter === 'provider' && styles.activeRoleButton
+              ]}
+              onPress={() => handleFilterChange('roleFilter', 'provider')}
+            >
+              <Text style={[
+                styles.roleText,
+                filters.roleFilter === 'provider' && styles.activeRoleText
+              ]}>As Provider</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* SearchBar */}
           <View style={styles.searchFilterContainer}>
             <SearchBar value={filters.searchTerm} onChangeText={handleSearchChange} />
-            <ConversationFilters 
-              showArchived={filters.showArchived}
-              serviceFilter={filters.serviceRequestFilter}
-              onFilterChange={handleFilterChange}
-            />
           </View>
 
           {/* Conversations List */}
@@ -369,14 +368,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     letterSpacing: 0.3,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   // Main title that shows at top initially
   headerTitleContainer: {
     paddingHorizontal: theme.spacing.lg,
@@ -389,7 +380,30 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     letterSpacing: 0.3,
   },
-  // Container for search and filters
+  // Role selector
+  roleContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  roleButton: {
+    marginRight: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  activeRoleButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  roleText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  activeRoleText: {
+    color: 'white',
+  },
+  // Container for search
   searchFilterContainer: {
     paddingHorizontal: theme.spacing.sm,
     marginBottom: theme.spacing.sm,

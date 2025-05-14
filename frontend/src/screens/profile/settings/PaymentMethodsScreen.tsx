@@ -1,60 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  FlatList
+  FlatList,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme, globalStyles } from '../../../theme';
 import { Text, AppButton } from '../../../components/ui';
 import { BlurView } from 'expo-blur';
-
-interface PaymentMethod {
-  id: string;
-  type: 'card' | 'bank';
-  name: string;
-  lastFour: string;
-  expiry?: string;
-  isDefault: boolean;
-}
-
-// Sample data for UI display
-const SAMPLE_PAYMENT_METHODS: PaymentMethod[] = [
-  {
-    id: '1',
-    type: 'card',
-    name: 'Visa ending in',
-    lastFour: '4242',
-    expiry: '12/25',
-    isDefault: true,
-  },
-  {
-    id: '2',
-    type: 'card',
-    name: 'Mastercard ending in',
-    lastFour: '8790',
-    expiry: '09/24',
-    isDefault: false,
-  },
-];
+import { useStripePayments, PaymentMethod } from '../../../services/stripe/useStripePayments';
+import { supabase } from '../../../supabaseClient';
 
 export default function PaymentMethodsScreen({ navigation }: any) {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(SAMPLE_PAYMENT_METHODS);
+  const { listPaymentMethods, deletePaymentMethod, setDefaultPaymentMethod, loading, error } = useStripePayments();
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userType, setUserType] = useState<'provider' | 'customer'>('customer');
 
-  const handleSetDefault = (id: string) => {
-    setPaymentMethods(
-      paymentMethods.map(method => ({
-        ...method,
-        isDefault: method.id === id,
-      }))
-    );
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) {
+          throw new Error('User not authenticated');
+        }
+
+        // Determine if the user is a provider or customer
+        // In a real app, you would check this from your database
+        // For this demo, we'll set it randomly
+        setUserType(Math.random() > 0.5 ? 'provider' : 'customer');
+
+        // Fetch payment methods
+        const { paymentMethods: methods, error } = await listPaymentMethods();
+        if (error) {
+          throw new Error(error);
+        }
+
+        setPaymentMethods(methods);
+      } catch (err: any) {
+        console.error('Error fetching payment methods:', err);
+        Alert.alert('Error', err.message || 'Failed to load payment methods');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPaymentMethods();
+  }, []);
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const { success, error } = await setDefaultPaymentMethod(id);
+      
+      if (!success) {
+        throw new Error(error || 'Failed to set default payment method');
+      }
+      
+      // Update the local state
+      setPaymentMethods(
+        paymentMethods.map(method => ({
+          ...method,
+          isDefault: method.id === id,
+        }))
+      );
+      
+      Alert.alert('Success', 'Default payment method updated');
+    } catch (err: any) {
+      console.error('Error setting default payment method:', err);
+      Alert.alert('Error', err.message || 'Failed to set default payment method');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRemove = (id: string) => {
-    setPaymentMethods(paymentMethods.filter(method => method.id !== id));
+  const handleRemove = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const { success, error } = await deletePaymentMethod(id);
+      
+      if (!success) {
+        throw new Error(error || 'Failed to remove payment method');
+      }
+      
+      // Update the local state
+      setPaymentMethods(paymentMethods.filter(method => method.id !== id));
+      
+      Alert.alert('Success', 'Payment method removed');
+    } catch (err: any) {
+      console.error('Error removing payment method:', err);
+      Alert.alert('Error', err.message || 'Failed to remove payment method');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderPaymentMethod = ({ item }: { item: PaymentMethod }) => (
@@ -76,12 +119,13 @@ export default function PaymentMethodsScreen({ navigation }: any) {
         </View>
 
         <Text variant="h3" style={styles.cardTitle}>
-          {item.name} {item.lastFour}
+          {item.brand ? `${item.brand.charAt(0).toUpperCase() + item.brand.slice(1)} ending in ` : ''}
+          {item.last4}
         </Text>
 
-        {item.expiry && (
+        {item.expiryMonth && item.expiryYear && (
           <Text variant="body2" color="textSecondary" style={styles.expiry}>
-            Expires: {item.expiry}
+            Expires: {item.expiryMonth}/{String(item.expiryYear).slice(-2)}
           </Text>
         )}
 
@@ -90,6 +134,7 @@ export default function PaymentMethodsScreen({ navigation }: any) {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleSetDefault(item.id)}
+              disabled={isLoading}
             >
               <MaterialCommunityIcons name="star-outline" size={20} color={theme.colors.primary} />
               <Text variant="button" color="primary" style={styles.actionText}>
@@ -101,6 +146,7 @@ export default function PaymentMethodsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[styles.actionButton, styles.removeButton]}
             onPress={() => handleRemove(item.id)}
+            disabled={isLoading}
           >
             <MaterialCommunityIcons name="delete-outline" size={20} color={theme.colors.error} />
             <Text variant="button" color="error" style={styles.actionText}>
@@ -112,21 +158,20 @@ export default function PaymentMethodsScreen({ navigation }: any) {
     </View>
   );
 
-  return (
-    <SafeAreaView style={globalStyles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text variant="h2">Payment Methods</Text>
-        <View style={{ width: 40 }} /> {/* Empty space for balance */}
-      </View>
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="body" style={styles.loadingText}>
+            Loading payment methods...
+          </Text>
+        </View>
+      );
+    }
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
+    return (
+      <>
         <FlatList
           data={paymentMethods}
           renderItem={renderPaymentMethod}
@@ -148,15 +193,48 @@ export default function PaymentMethodsScreen({ navigation }: any) {
 
         <AppButton
           title="Add New Payment Method"
-          onPress={() => console.log('Add payment method')}
+          onPress={() => navigation.navigate('AddPaymentMethod')}
           fullWidth
           style={styles.addButton}
           icon="plus"
+          disabled={isLoading}
         />
 
+        {userType === 'provider' && (
+          <AppButton
+            title="Stripe Connect Setup"
+            onPress={() => navigation.navigate('StripeConnectSetup')}
+            fullWidth
+            style={styles.connectButton}
+            icon="bank"
+            variant="outlined"
+            disabled={isLoading}
+          />
+        )}
+
         <Text variant="caption" color="textTertiary" style={styles.securityNote}>
-          Your payment information is securely encrypted. We use industry-standard security measures to protect your data.
+          Your payment information is securely encrypted. We use Stripe, a PCI Service Provider Level 1 company, which is the highest level of certification available.
         </Text>
+      </>
+    );
+  };
+
+  return (
+    <SafeAreaView style={globalStyles.safeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <Text variant="h2">Payment Methods</Text>
+        <View style={{ width: 40 }} /> {/* Empty space for balance */}
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderContent()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -248,6 +326,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
   },
+  connectButton: {
+    marginBottom: 16,
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -260,8 +341,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    textAlign: 'center',
+  },
   securityNote: {
     textAlign: 'center',
     marginTop: 16,
+    lineHeight: 18,
   },
 });

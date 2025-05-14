@@ -30,9 +30,10 @@ const AnimatedFlatList = Animated.createAnimatedComponent<any>(FlatList);
 interface RequestsListProps {
   onScroll?: (event: any) => void;
   onRefresh?: () => void;
+  onSelectRequest?: (requestId: string) => void;
 }
 
-export default function RequestsList({ onScroll, onRefresh }: RequestsListProps) {
+export default function RequestsList({ onScroll, onRefresh, onSelectRequest }: RequestsListProps) {
   const [refreshing, setRefreshing] = useState(false);
   
   // Get data from Redux store with safe selectors and memoization
@@ -195,6 +196,7 @@ export default function RequestsList({ onScroll, onRefresh }: RequestsListProps)
             request={item}
             index={index}
             onRefresh={handleRefresh}
+            onSelect={onSelectRequest ? () => onSelectRequest(item.id) : undefined}
           />
         )}
         contentContainerStyle={styles.list}

@@ -13,6 +13,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import BrowseServicesTab from './BrowseServicesTab';
 import MyListingsTab from './MyListingsTab';
 import RequestsTab from './RequestsTab';
+import ProviderIncomingRequestsTab from './ProviderIncomingRequestsTab';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { logEvent } from '../../lib/analytics';
 import { BlurView } from 'expo-blur';
@@ -109,6 +110,8 @@ export default function ServicesScreen() {
                     iconName = 'format-list-bulleted';
                   } else if (route.name === 'Requests') {
                     iconName = 'swap-horizontal';
+                  } else if (route.name === 'IncomingRequests') {
+                    iconName = 'inbox-arrow-down';
                   }
                   
                   // Ensure iconName is always a valid MaterialCommunityIcons name
@@ -160,6 +163,21 @@ export default function ServicesScreen() {
                 tabBarBadge: requestsCount > 0 ? requestsCount : undefined,
                 tabBarBadgeStyle: {
                   backgroundColor: theme.colors.primary,
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                },
+              }}
+            />
+            <Tab.Screen 
+              name="IncomingRequests" 
+              children={(props) => <ProviderIncomingRequestsTab {...props} onScroll={handleScroll} />}
+              options={{ 
+                title: 'Incoming', 
+                tabBarAccessibilityLabel: 'Incoming Requests Tab', 
+                tabBarTestID: 'tab-incoming-requests',
+                tabBarBadge: requestsCount > 0 ? requestsCount : undefined,
+                tabBarBadgeStyle: {
+                  backgroundColor: theme.colors.warning,
                   color: '#FFFFFF',
                   fontSize: 12,
                 },

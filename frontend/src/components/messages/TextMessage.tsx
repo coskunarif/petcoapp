@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 import { Message } from './types';
 
@@ -11,6 +12,47 @@ interface TextMessageProps {
 }
 
 const TextMessage: React.FC<TextMessageProps> = ({ message, isMyMessage, timestamp }) => {
+  // Render message status indicator for my messages only
+  const renderStatusIndicator = () => {
+    if (!isMyMessage) return null;
+    
+    let iconName = '';
+    let color = '';
+    
+    switch (message.status) {
+      case 'sending':
+        iconName = 'clock-outline';
+        color = '#9e9e9e';
+        break;
+      case 'sent':
+        iconName = 'check';
+        color = '#9e9e9e';
+        break;
+      case 'delivered':
+        iconName = 'check-all';
+        color = '#9e9e9e';
+        break;
+      case 'read':
+        iconName = 'check-all';
+        color = '#4fc3f7';
+        break;
+      case 'error':
+        iconName = 'alert-circle-outline';
+        color = '#f44336';
+        break;
+      default:
+        // Default status when not specified
+        iconName = 'check';
+        color = '#9e9e9e';
+    }
+    
+    return (
+      <View style={styles.statusContainer}>
+        <MaterialCommunityIcons name={iconName} size={14} color={color} />
+      </View>
+    );
+  };
+  
   return (
     <View
       style={[
@@ -30,7 +72,10 @@ const TextMessage: React.FC<TextMessageProps> = ({ message, isMyMessage, timesta
               {message.content}
             </Text>
           </LinearGradient>
-          <Text style={[styles.timestamp, styles.myTimestamp]}>{timestamp}</Text>
+          <View style={styles.messageFooter}>
+            {renderStatusIndicator()}
+            <Text style={[styles.timestamp, styles.myTimestamp]}>{timestamp}</Text>
+          </View>
         </View>
       ) : (
         <View style={styles.messageWrapper}>
@@ -93,18 +138,26 @@ const styles = StyleSheet.create({
   theirMessageText: {
     color: theme.colors.text,
   },
-  timestamp: {
-    fontSize: 11,
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     marginTop: 4,
     marginHorizontal: 2,
   },
+  statusContainer: {
+    marginRight: 4,
+  },
+  timestamp: {
+    fontSize: 11,
+  },
   myTimestamp: {
     color: theme.colors.textTertiary,
-    alignSelf: 'flex-end',
   },
   theirTimestamp: {
     color: theme.colors.textTertiary,
     alignSelf: 'flex-start',
+    marginTop: 4,
   },
 });
 

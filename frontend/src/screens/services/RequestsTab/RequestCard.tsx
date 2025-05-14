@@ -22,9 +22,10 @@ interface RequestCardProps {
   request: ServiceRequest;
   index?: number;
   onRefresh?: () => void;
+  onSelect?: () => void;
 }
 
-export default function RequestCard({ request, index = 0, onRefresh }: RequestCardProps) {
+export default function RequestCard({ request, index = 0, onRefresh, onSelect }: RequestCardProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -309,7 +310,7 @@ export default function RequestCard({ request, index = 0, onRefresh }: RequestCa
           ]}
         >
           <TouchableOpacity
-            onPress={() => setModalVisible(true)}
+            onPress={() => onSelect ? onSelect() : setModalVisible(true)}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             activeOpacity={0.9}
@@ -399,7 +400,7 @@ export default function RequestCard({ request, index = 0, onRefresh }: RequestCa
                       styles.actionButton, 
                       { backgroundColor: `${statusColor}10` }
                     ]}
-                    onPress={() => setModalVisible(true)}
+                    onPress={() => onSelect ? onSelect() : setModalVisible(true)}
                     disabled={isUpdating}
                   >
                     <Text style={[styles.actionText, { color: statusColor }]}>

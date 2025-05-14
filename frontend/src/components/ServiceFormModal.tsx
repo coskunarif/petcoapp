@@ -8,17 +8,31 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../redux/store';
+import { fetchPetsAsync } from '../store/petsSlice';
+import defaultPetUrl from '../../assets/default-pet';
+import ServiceTypeSelector from './services/ServiceTypeSelector';
 
 // Common interface for service types
 interface ServiceType {
   id: string;
   name: string;
+}
+
+// Pet interface
+interface Pet {
+  id: string;
+  name: string;
+  image_url?: string;
 }
 
 interface ServiceFormModalProps {
@@ -30,6 +44,7 @@ interface ServiceFormModalProps {
     service_type_id: string;
     description: string;
     date?: string;
+    pet_id?: string;
     availability_schedule?: any;
   }) => void;
   serviceTypes: ServiceType[];
@@ -38,11 +53,13 @@ interface ServiceFormModalProps {
     service_type_id?: string;
     description?: string;
     date?: string;
+    pet_id?: string;
   };
   mode: 'create' | 'request' | 'edit';
   // Additional fields to force showing or hiding
   showTitle?: boolean;
   showDate?: boolean;
+  showPetSelection?: boolean;
 }
 
 const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ 
@@ -53,11 +70,19 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   initialValues,
   mode,
   showTitle,
-  showDate
+  showDate,
+  showPetSelection
 }) => {
+  // Redux
+  const dispatch = useDispatch();
+  const userId = useSelector((state: RootState) => state.auth?.user?.id);
+  const pets = useSelector((state: RootState) => state.pets?.petsList || []);
+  const petsLoading = useSelector((state: RootState) => state.pets?.loading);
+  
   // Form state
   const [title, setTitle] = useState('');
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(undefined);
+  const [selectedPetId, setSelectedPetId] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState('');
   const [selectedDateObj, setSelectedDateObj] = useState(new Date());
   const [date, setDate] = useState<string>(selectedDateObj.toISOString());
@@ -67,9 +92,17 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch pets when modal becomes visible
+  useEffect(() => {
+    if (visible && userId && mode === 'request') {
+      dispatch(fetchPetsAsync(userId));
+    }
+  }, [visible, userId, dispatch, mode]);
+
   // Determine which fields to show based on mode and explicit props
   const shouldShowTitle = showTitle !== undefined ? showTitle : (mode === 'create' || mode === 'edit');
   const shouldShowDate = showDate !== undefined ? showDate : (mode === 'request');
+  const shouldShowPetSelection = showPetSelection !== undefined ? showPetSelection : (mode === 'request');
   
   // Get title based on mode
   const getModalTitle = () => {
@@ -108,6 +141,7 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         setSelectedServiceTypeId(initialValues.service_type_id || 
           (serviceTypes.length > 0 ? serviceTypes[0].id : undefined));
         setDescription(initialValues.description || '');
+        setSelectedPetId(initialValues.pet_id);
         
         // Set date if provided, otherwise use current date
         if (initialValues.date) {
@@ -124,6 +158,7 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         setTitle('');
         setSelectedServiceTypeId(serviceTypes.length > 0 ? serviceTypes[0].id : undefined);
         setDescription('');
+        setSelectedPetId(pets.length > 0 ? pets[0].id : undefined);
         const now = new Date();
         setSelectedDateObj(now);
         setDate(now.toISOString());
@@ -133,7 +168,7 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setSubmitting(false);
       setShowDatePicker(false);
     }
-  }, [visible, initialValues, serviceTypes]);
+  }, [visible, initialValues, serviceTypes, pets]);
 
   const validate = () => {
     // Reset any previous errors
@@ -156,6 +191,12 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       return false;
     }
     
+    // If pet selection is shown, a pet is required for service requests
+    if (shouldShowPetSelection && !selectedPetId && mode === 'request') {
+      setError('Please select a pet for this service request');
+      return false;
+    }
+    
     return true;
   };
 
@@ -174,6 +215,8 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         description,
         // Include date if the field is shown
         ...(shouldShowDate && { date }),
+        // Include pet_id if pet selection is shown
+        ...(shouldShowPetSelection && { pet_id: selectedPetId }),
         // Include availability schedule for service creation/editing
         ...(mode !== 'request' && {
           availability_schedule: {
@@ -240,25 +283,42 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                 </View>
               )}
               
-              {/* Service Type Selection */}
+              {/* Service Type Selection - Replace Picker with ServiceTypeSelector */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Service Type</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={selectedServiceTypeId}
-                    onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
-                    style={styles.picker}
-                    enabled={!submitting}
-                  >
-                    {serviceTypes && serviceTypes.length > 0 ? (
-                      serviceTypes.map((st) => (
-                        <Picker.Item key={st.id} label={st.name} value={st.id} />
-                      ))
-                    ) : (
-                      <Picker.Item label="No service types available" value={undefined} />
-                    )}
-                  </Picker>
-                </View>
+                {Platform.OS === 'ios' ? (
+                  <View>
+                    <Text style={styles.label}>Service Type</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={selectedServiceTypeId}
+                        onValueChange={(itemValue) => setSelectedServiceTypeId(itemValue)}
+                        style={styles.picker}
+                        enabled={!submitting}
+                        itemStyle={styles.pickerItem}
+                        dropdownIconColor="#333"
+                      >
+                        {serviceTypes && serviceTypes.length > 0 ? (
+                          serviceTypes.map((st) => (
+                            <Picker.Item 
+                              key={st.id} 
+                              label={st.name} 
+                              value={st.id}
+                            />
+                          ))
+                        ) : (
+                          <Picker.Item label="No service types available" value={undefined} />
+                        )}
+                      </Picker>
+                    </View>
+                  </View>
+                ) : (
+                  <ServiceTypeSelector
+                    serviceTypes={serviceTypes}
+                    selectedTypeId={selectedServiceTypeId}
+                    onSelectType={(typeId) => setSelectedServiceTypeId(typeId)}
+                    error={error && !selectedServiceTypeId ? 'Please select a service type' : undefined}
+                  />
+                )}
               </View>
               
               {/* Description Field */}
@@ -277,6 +337,58 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                 />
               </View>
               
+              {/* Pet Selection Field - Show based on shouldShowPetSelection */}
+              {shouldShowPetSelection && (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Select a Pet</Text>
+                  {petsLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                      <Text style={styles.loadingText}>Loading your pets...</Text>
+                    </View>
+                  ) : pets.length === 0 ? (
+                    <View style={styles.emptyStateContainer}>
+                      <MaterialCommunityIcons name="paw" size={24} color={theme.colors.textSecondary} />
+                      <Text style={styles.emptyStateText}>
+                        You don't have any pets yet. Please add a pet first.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.petsScrollContainer}>
+                      <View style={styles.petsRow}>
+                        {pets.map((pet) => (
+                          <TouchableOpacity
+                            key={pet.id}
+                            style={[
+                              styles.petCard,
+                              selectedPetId === pet.id && styles.selectedPetCard
+                            ]}
+                            onPress={() => setSelectedPetId(pet.id)}
+                            disabled={submitting}
+                          >
+                            <View style={styles.petImageContainer}>
+                              <Image
+                                source={pet.image_url ? { uri: pet.image_url } : { uri: defaultPetUrl }}
+                                style={styles.petImage}
+                                resizeMode="cover"
+                              />
+                              {selectedPetId === pet.id && (
+                                <View style={styles.petSelectedIcon}>
+                                  <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.primary} />
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.petName} numberOfLines={1}>
+                              {pet.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+
               {/* Date Field - Show based on shouldShowDate */}
               {shouldShowDate && (
                 <View style={styles.fieldContainer}>
@@ -417,11 +529,105 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#fff',
     overflow: 'hidden',
+    marginBottom: Platform.OS === 'android' ? 10 : 0, // Add padding on Android
+    paddingVertical: Platform.OS === 'android' ? 5 : 0, // Add padding on Android
+    minHeight: Platform.OS === 'android' ? 60 : 150, // Ensure minimum height
   },
   picker: {
     width: '100%',
-    height: Platform.OS === 'ios' ? 150 : 50,
+    height: Platform.OS === 'ios' ? 150 : Dimensions.get('window').height * 0.07, // Dynamic height based on screen size
+    color: '#333',
+    fontSize: 16,
+    marginVertical: Platform.OS === 'android' ? 8 : 0, // Add vertical margin on Android
   },
+  pickerItem: {
+    fontSize: 18, // Larger font
+    height: 120, // Much taller item for iOS
+    color: '#333',
+    backgroundColor: '#fff',
+    fontWeight: '400',
+  },
+  // Pet selection styles
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 5,
+  },
+  loadingText: {
+    marginLeft: 10,
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+  },
+  emptyStateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    padding: 16,
+    borderRadius: 5,
+  },
+  emptyStateText: {
+    marginLeft: 10,
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    flex: 1,
+  },
+  petsScrollContainer: {
+    marginTop: 5,
+    marginBottom: 5,
+  },
+  petsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  petCard: {
+    width: 90,
+    marginRight: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 10,
+    padding: 8,
+    backgroundColor: 'white',
+  },
+  selectedPetCard: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(108, 99, 255, 0.05)',
+  },
+  petImageContainer: {
+    position: 'relative',
+    width: 65,
+    height: 65,
+    marginBottom: 8,
+  },
+  petImage: {
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  petSelectedIcon: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'white',
+  },
+  petName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.text,
+    textAlign: 'center',
+  },
+  // Date selection styles
   dateSelector: {
     borderWidth: 1,
     borderColor: '#ddd',

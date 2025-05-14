@@ -35,6 +35,7 @@ export interface ServiceListing {
   };
   is_active: boolean;
   created_at: string;
+  photos?: string[]; // URLs to service photos 
 
   // This field doesn't exist in the database schema but is used in the code
   // @deprecated Not in the actual database schema
